@@ -1,5 +1,9 @@
 name: CI
 
+# Node 24 ships npm 11, which is what generated the committed lock files.
+# npm 10 resolves mongodb's optional gcp-metadata peer dependency differently and
+# would fail `npm ci` against the same lock.
+
 on:
   push:
     branches: [main]
@@ -20,7 +24,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: server/package-lock.json
 
@@ -50,7 +54,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: admin/package-lock.json
 
@@ -74,7 +78,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: mobile/package-lock.json
 
