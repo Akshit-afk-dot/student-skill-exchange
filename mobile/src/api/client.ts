@@ -11,9 +11,11 @@ import { Platform } from 'react-native';
  * bundle from, which is the machine running the API.
  */
 function resolveBaseUrl(): string {
+  // An explicit env var wins over the app.json default: EXPO_PUBLIC_API_URL is how you
+  // point a build at a different backend without editing committed config.
   const configured =
-    (Constants.expoConfig?.extra?.apiUrl as string | undefined) ??
-    process.env.EXPO_PUBLIC_API_URL ??
+    process.env.EXPO_PUBLIC_API_URL ||
+    (Constants.expoConfig?.extra?.apiUrl as string | undefined) ||
     'http://localhost:4000';
 
   const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(configured);
