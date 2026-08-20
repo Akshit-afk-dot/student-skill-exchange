@@ -112,6 +112,36 @@ queries — none of which a mock exercises.
 
 ---
 
+## Working on it day to day
+
+```bash
+git pull
+# …make changes…
+git add -A
+git commit -m "What changed and why"
+git push
+```
+
+Every push to `main` runs CI: typecheck, build and the full test suite for the server,
+plus a typecheck and a real Metro bundle for the mobile app. The bundle step matters —
+it catches broken imports that `tsc` cannot see.
+
+Before pushing anything substantial, the same checks run locally in about a minute:
+
+```bash
+cd server && npm run typecheck && npm run lint && npm test
+```
+
+Working on a bigger change is easier on a branch:
+
+```bash
+git checkout -b feature/video-calls
+# …commit as you go…
+git push -u origin feature/video-calls
+```
+
+---
+
 ## Documentation
 
 | Document | Contents |
