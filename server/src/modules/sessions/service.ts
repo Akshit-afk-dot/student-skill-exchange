@@ -11,7 +11,7 @@ import { RT, emitToUser } from '../../realtime/bus';
 import { POINTS, type SessionMode, type SessionStatus } from '../../types/domain';
 import { ApiError } from '../../utils/errors';
 import { paginate, type Paginated } from '../../utils/pagination';
-import { awardPoints, evaluateBadges, touchStreak } from '../gamification/service';
+import { evaluateBadges, touchStreak } from '../gamification/service';
 import { notify } from '../notifications/service';
 
 export interface CreateSessionInput {

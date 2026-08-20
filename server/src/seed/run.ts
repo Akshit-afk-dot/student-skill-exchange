@@ -506,7 +506,6 @@ async function main(): Promise<void> {
   };
 
   logger.info(summary, 'Demo data seeded');
-  // eslint-disable-next-line no-console
   console.log(
     `\nDemo accounts are ready. Sign in with any of these and the password "${DEMO_PASSWORD}":\n` +
       STUDENTS.map((s) => `  ${s.email.padEnd(32)} ${s.name}`).join('\n') +

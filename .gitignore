@@ -48,3 +48,5 @@ Thumbs.db
 # Bundle verification output
 .expo-export-check/
 .bundle-check.log
+.scratch-web.log
+.ci-export/

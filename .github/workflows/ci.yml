@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A new push to the same branch supersedes the previous run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: Server — typecheck, build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install
+        working-directory: server
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: server
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: server
+        run: npm run build
+
+      # Runs against an in-memory MongoDB the test helper downloads and starts,
+      # so no service container is needed.
+      - name: Test
+        working-directory: server
+        run: npm test
+
+  admin:
+    name: Admin — typecheck & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - name: Install
+        working-directory: admin
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: admin
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: admin
+        run: npm run build
+
+  mobile:
+    name: Mobile — typecheck & bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install
+        working-directory: mobile
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: mobile
+        run: npm run typecheck
+
+      # A full Metro bundle catches import and resolution errors that tsc cannot see.
+      - name: Bundle
+        working-directory: mobile
+        run: npx expo export --platform android --output-dir .ci-export

@@ -167,11 +167,12 @@ export interface AddUserSkillInput {
 const counterField = (type: UserSkillType) => (type === 'TEACH' ? 'teachCount' : 'learnCount');
 
 export async function addUserSkill(userId: string, input: AddUserSkillInput) {
-  let skill: SkillDoc | null = null;
+  let skill: SkillDoc;
 
   if (input.skillId) {
-    skill = await Skill.findById(input.skillId);
-    if (!skill) throw ApiError.notFound('Skill not found');
+    const found = await Skill.findById(input.skillId);
+    if (!found) throw ApiError.notFound('Skill not found');
+    skill = found;
   } else if (input.skillName && input.categoryId) {
     skill = await findOrCreateSkill(input.skillName, input.categoryId, userId);
   } else {

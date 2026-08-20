@@ -33,10 +33,8 @@ function getMessaging(): Messaging | null {
   try {
     // Loaded lazily via require so the (large) SDK is never pulled in when push is off.
     // firebase-admin v13+ exposes a modular API from these sub-paths.
-    /* eslint-disable @typescript-eslint/no-var-requires */
     const { initializeApp, getApps, cert } = require('firebase-admin/app') as typeof import('firebase-admin/app');
     const { getMessaging } = require('firebase-admin/messaging') as typeof import('firebase-admin/messaging');
-    /* eslint-enable @typescript-eslint/no-var-requires */
 
     const existing = getApps();
     const app =
