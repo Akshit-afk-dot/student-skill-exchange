@@ -1,0 +1,15 @@
+# Normalise line endings in the repo. Working copies stay native (CRLF on Windows),
+# but everything committed is LF, so diffs stay clean across machines.
+* text=auto eol=lf
+
+# Lockfiles are generated; collapse them in diffs and reviews.
+package-lock.json linguist-generated=true -diff
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.otf binary
