@@ -64,9 +64,21 @@ export function Screen({
   );
 }
 
-export function Title({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
+export function Title({
+  children,
+  style,
+  numberOfLines,
+}: {
+  children: ReactNode;
+  style?: StyleProp<TextStyle>;
+  numberOfLines?: number;
+}) {
   const t = useTheme();
-  return <Text style={[t.typography.title, { color: t.colors.text }, style]}>{children}</Text>;
+  return (
+    <Text numberOfLines={numberOfLines} style={[t.typography.title, { color: t.colors.text }, style]}>
+      {children}
+    </Text>
+  );
 }
 
 export function Heading({

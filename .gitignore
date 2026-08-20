@@ -44,3 +44,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 *.swp
+
+# Bundle verification output
+.expo-export-check/
+.bundle-check.log
