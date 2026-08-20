@@ -1,0 +1,33 @@
+import { Router } from 'express';
+import { adminRouter } from '../modules/admin/controller';
+import { authRouter } from '../modules/auth/controller';
+import { chatRouter } from '../modules/chat/controller';
+import { connectionsRouter } from '../modules/connections/controller';
+import { gamificationRouter } from '../modules/gamification/controller';
+import { matchingRouter } from '../modules/matching/controller';
+import { notificationsRouter } from '../modules/notifications/controller';
+import { reportsRouter } from '../modules/reports/controller';
+import { requestsRouter } from '../modules/requests/controller';
+import { reviewsRouter } from '../modules/reviews/controller';
+import { sessionsRouter } from '../modules/sessions/controller';
+import { skillsRouter, userSkillsRouter } from '../modules/skills/controller';
+import { uploadsRouter } from '../modules/uploads/controller';
+import { usersRouter } from '../modules/users/controller';
+
+export const apiRouter = Router();
+
+apiRouter.use('/auth', authRouter);
+apiRouter.use('/users', usersRouter);
+apiRouter.use('/skills', skillsRouter);
+apiRouter.use('/user-skills', userSkillsRouter);
+apiRouter.use('/matches', matchingRouter);
+apiRouter.use('/requests', requestsRouter);
+apiRouter.use('/connections', connectionsRouter);
+apiRouter.use('/conversations', chatRouter);
+apiRouter.use('/sessions', sessionsRouter);
+apiRouter.use('/reviews', reviewsRouter);
+apiRouter.use('/reports', reportsRouter);
+apiRouter.use('/notifications', notificationsRouter);
+apiRouter.use('/gamification', gamificationRouter);
+apiRouter.use('/uploads', uploadsRouter);
+apiRouter.use('/admin', adminRouter);

@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Skill Exchange",
+    "slug": "student-skill-exchange",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "skillexchange",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#4F46E5"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "edu.college.skillexchange",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Your location is used to find students nearby who can teach you in person.",
+        "NSPhotoLibraryUsageDescription": "Choose a photo for your profile or to share in a chat.",
+        "NSCameraUsageDescription": "Take a photo for your profile or to share in a chat."
+      }
+    },
+    "android": {
+      "package": "edu.college.skillexchange",
+      "adaptiveIcon": {
+        "backgroundColor": "#4F46E5",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": ["expo-secure-store", "expo-location", "expo-image-picker"],
+    "extra": {
+      "apiUrl": "http://localhost:4000"
+    }
+  }
+}

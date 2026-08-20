@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+web-build/
+*.tsbuildinfo
+
+# Secrets — never commit these. Use the .env.example files as templates.
+.env
+.env.*
+!.env.example
+*.pem
+*-service-account.json
+
+# Local uploads (development storage driver)
+server/uploads/
+
+# Scratch and local scripts
+.scratch/
+*.log
+logs/
+
+# Expo / React Native
+.expo/
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+*.orig.*
+
+# Test output
+coverage/
+.nyc_output/
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
