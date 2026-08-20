@@ -147,6 +147,7 @@ git push -u origin feature/video-calls
 | Document | Contents |
 |---|---|
 | [`docs/MATCHING.md`](docs/MATCHING.md) | The algorithm, weight by weight, with worked examples |
+| [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | Step-by-step credential setup for MongoDB, Cloudinary, Firebase, Google and SMTP |
 | [`docs/API.md`](docs/API.md) | Every endpoint, with request and response shapes |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Data model, module layout, realtime design |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Environment variables and going to production |
@@ -161,6 +162,11 @@ scheduling with clash detection, mutual completion, ratings and reviews, gamific
 (points, streaks, badges, leaderboard), reporting and moderation, and an admin dashboard
 with live analytics.
 
-Not yet built: push notifications require a Firebase project, image uploads fall back to
-local disk without Cloudinary credentials, and Google sign-in needs OAuth client IDs. All
-three degrade gracefully — the app runs fully without any of them.
+Four integrations are optional and each degrades gracefully, so the app runs end to end
+with nothing but a MongoDB connection string: Cloudinary (else local disk), Firebase push
+(else in-app and realtime notifications only), Google sign-in (else the button is hidden),
+and SMTP (else emails are written to the server log).
+[`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) walks through obtaining each credential.
+
+Deployment configs are committed for Render (API), Netlify and Vercel (dashboard), plus a
+multi-stage Dockerfile. No secret is in any of them.

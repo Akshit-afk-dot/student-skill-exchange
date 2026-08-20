@@ -58,7 +58,24 @@ gracefully on `SIGTERM` — it stops the cron jobs, closes sockets, lets in-flig
 finish, then disconnects from MongoDB, with a 15-second hard timeout so a stuck socket
 cannot hang a rolling deploy.
 
-### Render / Railway / Fly
+### Render (blueprint committed)
+
+[`render.yaml`](../render.yaml) at the repo root describes the service, so you do not
+configure it by hand:
+
+1. Render dashboard → **New → Blueprint** → point it at this repository.
+2. Render reads `render.yaml`, creates the service, and **generates both JWT secrets
+   itself**.
+3. Fill in the values marked `sync: false` in the dashboard: `MONGO_URI`, `PUBLIC_URL`
+   (the service's own URL), `CORS_ORIGINS` (the dashboard's URL), `ADMIN_EMAIL`,
+   `ADMIN_PASSWORD`, and any optional integration keys.
+
+No secret is in the file — that is the point of `sync: false`.
+
+Note the free plan sleeps after 15 minutes idle, and the first request afterwards takes
+roughly 30 seconds to wake it. For a live viva, hit the URL a minute beforehand.
+
+### Railway / Fly / anything else
 
 - Build: `npm ci && npm run build`
 - Start: `npm start`
@@ -77,23 +94,16 @@ number to match.
 
 ### Docker
 
-```dockerfile
-FROM node:22-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
+A multi-stage [`server/Dockerfile`](../server/Dockerfile) is committed:
 
-FROM node:22-alpine
-WORKDIR /app
-ENV NODE_ENV=production
-COPY package*.json ./
-RUN npm ci --omit=dev
-COPY --from=build /app/dist ./dist
-EXPOSE 4000
-CMD ["node", "dist/index.js"]
+```bash
+cd server
+docker build -t skill-exchange-api .
+docker run -p 4000:4000 --env-file .env skill-exchange-api
 ```
+
+It builds with dev dependencies, ships only `dist/` plus production dependencies, runs as
+the unprivileged `node` user, and carries a `HEALTHCHECK` hitting `/health`.
 
 Note `pino-pretty` is a devDependency, so `--omit=dev` drops it. The logger detects that
 and falls back to JSON output rather than failing to boot.
@@ -109,7 +119,9 @@ VITE_API_URL=https://your-api.example.com npm run build
 ```
 
 `dist/` is a static bundle — deploy to Netlify, Vercel, Cloudflare Pages, or any static
-host.
+host. Configs are committed for the first two
+([`admin/netlify.toml`](../admin/netlify.toml), [`admin/vercel.json`](../admin/vercel.json)),
+both of which already include the SPA rewrite and sensible caching headers.
 
 Two things to get right:
 
@@ -118,8 +130,9 @@ Two things to get right:
    `http://localhost:5173` and `http://127.0.0.1:5173` are *different origins* — list both
    if you use both.
 
-The dashboard is a single-page app, so configure the host to rewrite unknown paths to
-`index.html`, or a refresh on `/users` will 404.
+The dashboard is a single-page app, so the host must rewrite unknown paths to
+`index.html`, or a refresh on `/users` will 404. Both committed configs do this; on
+another host you must set it up yourself.
 
 ---
 
@@ -155,34 +168,15 @@ only applies in development — production builds use the configured URL verbati
 
 ## Optional integrations
 
-### Cloudinary (file storage)
+Cloudinary, Firebase push, Google sign-in and SMTP each have a step-by-step credential
+walkthrough in **[INTEGRATIONS.md](INTEGRATIONS.md)** — where to click, what to copy, and
+how to verify it worked.
 
-Sign up, copy Cloud Name / API Key / API Secret from the dashboard into
-`CLOUDINARY_*`. The server switches drivers at boot and logs which one it picked.
+All four are optional. The server logs which are active at boot and falls back cleanly
+when they are absent, so a deployment with none of them still works end to end.
 
-### Firebase Cloud Messaging (push)
-
-1. Create a Firebase project.
-2. **Project settings → Service accounts → Generate new private key**.
-3. From the JSON, set `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and
-   `FIREBASE_PRIVATE_KEY`.
-
-The private key contains newlines. Put it on one line with literal `\n` where the newlines
-were — the server converts them back.
-
-Without these, push is disabled and everything else still works.
-
-### Google sign-in
-
-Create OAuth client IDs in Google Cloud Console (one per platform: web, iOS, Android) and
-list them comma-separated in `GOOGLE_CLIENT_IDS`. These are the *audiences* the server
-accepts, which is what stops a token minted for another app being replayed against yours.
-
-### SMTP (email)
-
-Any provider works. For Gmail you need an **app password**, not your account password.
-Without SMTP, verification links and reset codes are written to the server log — enough to
-test both flows end to end.
+The one worth doing before you deploy is **Cloudinary**: Render, Railway and Fly wipe the
+filesystem on every deploy, so without it uploaded photos vanish.
 
 ---
 

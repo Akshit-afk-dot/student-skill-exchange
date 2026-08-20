@@ -2,7 +2,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
-import { Banner, Body, Button, Field, Input, Screen, Title } from '../../components/ui';
+import { Banner, Body, Button, Caption, Field, Input, Row, Screen, Title } from '../../components/ui';
+import { useGoogleSignIn } from '../../hooks/useGoogleSignIn';
 import { useAction } from '../../hooks/useAsync';
 import { useAuth } from '../../store/auth';
 import { useTheme } from '../../theme';
@@ -12,6 +13,7 @@ export function LoginScreen() {
   const t = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { signIn } = useAuth();
+  const google = useGoogleSignIn();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,6 +34,7 @@ export function LoginScreen() {
         </View>
 
         {submit.error ? <Banner tone="danger" text={submit.error} /> : null}
+        {google.error ? <Banner tone="danger" text={google.error} /> : null}
 
         <Field label="Email" error={submit.fieldErrors?.email}>
           <Input
@@ -91,6 +94,23 @@ export function LoginScreen() {
           loading={submit.pending}
           disabled={!canSubmit}
         />
+
+        {google.available ? (
+          <>
+            <Row style={{ marginVertical: t.spacing.lg }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: t.colors.border }} />
+              <Caption style={{ marginHorizontal: t.spacing.md }}>or</Caption>
+              <View style={{ flex: 1, height: 1, backgroundColor: t.colors.border }} />
+            </Row>
+            <Button
+              label="Continue with Google"
+              variant="ghost"
+              icon="logo-google"
+              onPress={google.signIn}
+              loading={google.pending}
+            />
+          </>
+        ) : null}
 
         <View
           style={{
