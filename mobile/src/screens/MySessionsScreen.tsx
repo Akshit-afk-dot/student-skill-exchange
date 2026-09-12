@@ -7,14 +7,13 @@ import { sessions as sessionsApi } from '../api/endpoints';
 import { SessionCard } from '../components/cards';
 import {
   Banner,
-  Body,
   Chip,
   EmptyState,
-  LoadingView,
   Row,
   Screen,
   Title,
 } from '../components/ui';
+import { SkeletonList } from '../components/motion';
 import { useAsync } from '../hooks/useAsync';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
@@ -69,7 +68,9 @@ export function MySessionsScreen() {
       </View>
 
       {state.loading ? (
-        <LoadingView />
+        <View style={{ paddingHorizontal: t.spacing.lg }}>
+          <SkeletonList count={3} lines={2} />
+        </View>
       ) : (
         <FlatList
           data={state.data?.items ?? []}
@@ -91,8 +92,9 @@ export function MySessionsScreen() {
               onAction={() => navigation.navigate('Connections')}
             />
           }
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <SessionCard
+              index={index}
               session={item}
               currentUserId={user?.id ?? ''}
               onPress={() => navigation.navigate('SessionDetails', { sessionId: item._id })}

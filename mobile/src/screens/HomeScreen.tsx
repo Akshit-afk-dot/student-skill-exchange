@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { gamification, matching, requests, sessions } from '../api/endpoints';
 import { MatchCard, SessionCard } from '../components/cards';
 import {
@@ -13,13 +13,13 @@ import {
   Card,
   EmptyState,
   Heading,
-  LoadingView,
   Row,
   Screen,
   SectionHeader,
   StatTile,
   Title,
 } from '../components/ui';
+import { PressableScale, SkeletonList, Skeleton } from '../components/motion';
 import { useAsync } from '../hooks/useAsync';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
@@ -43,7 +43,22 @@ export function HomeScreen() {
 
   const state = useAsync(load, []);
 
-  if (state.loading) return <LoadingView label="Getting things ready…" />;
+  if (state.loading) {
+    // A skeleton that mirrors the real layout reads as "almost there"; a centred
+    // spinner on an empty screen reads as "stuck".
+    return (
+      <Screen scroll>
+        <Skeleton width="45%" height={26} style={{ marginBottom: 6 }} />
+        <Skeleton width="28%" height={13} style={{ marginBottom: t.spacing.xl }} />
+        <Row gap={t.spacing.sm} style={{ marginBottom: t.spacing.xl }}>
+          <Skeleton height={84} radius={18} />
+          <Skeleton height={84} radius={18} />
+          <Skeleton height={84} radius={18} />
+        </Row>
+        <SkeletonList count={2} lines={2} />
+      </Screen>
+    );
+  }
 
   const [matches, upcoming, pending, analytics] = state.data ?? [];
   const firstName = user?.name.split(' ')[0] ?? 'there';
@@ -57,21 +72,33 @@ export function HomeScreen() {
           <Title numberOfLines={1}>{firstName}</Title>
         </View>
         <Row gap={t.spacing.md}>
-          <Pressable
+          <PressableScale
             onPress={() => navigation.navigate('Notifications')}
-            accessibilityRole="button"
             accessibilityLabel="Notifications"
-            hitSlop={8}
+            scaleTo={0.9}
           >
-            <Ionicons name="notifications-outline" size={24} color={t.colors.text} />
-          </Pressable>
-          <Pressable
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: t.colors.surface,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: t.colors.border,
+              }}
+            >
+              <Ionicons name="notifications-outline" size={20} color={t.colors.text} />
+            </View>
+          </PressableScale>
+          <PressableScale
             onPress={() => navigation.navigate('Tabs', { screen: 'ProfileTab' })}
-            accessibilityRole="button"
             accessibilityLabel="Your profile"
+            scaleTo={0.9}
           >
-            <Avatar name={user?.name ?? '?'} uri={user?.profileImage} size={36} />
-          </Pressable>
+            <Avatar name={user?.name ?? '?'} uri={user?.profileImage} size={40} />
+          </PressableScale>
         </Row>
       </Row>
 
@@ -91,35 +118,39 @@ export function HomeScreen() {
             Matching needs to know what you can teach and what you want to learn.
           </Body>
           <Row style={{ marginTop: t.spacing.md }}>
-            <Pressable
+            <PressableScale
               onPress={() => navigation.navigate('MySkills')}
-              accessibilityRole="button"
+              haptic="press"
+              accessibilityLabel="Add skills"
               style={{
                 backgroundColor: t.colors.primary,
                 paddingHorizontal: t.spacing.lg,
-                paddingVertical: 10,
+                paddingVertical: 11,
                 borderRadius: t.radius.md,
               }}
             >
               <Body style={{ color: t.colors.textInverse, fontWeight: '600' }}>Add skills</Body>
-            </Pressable>
+            </PressableScale>
           </Row>
         </Card>
       ) : null}
 
       <Row gap={t.spacing.sm} style={{ marginBottom: t.spacing.xl }}>
         <StatTile
+          index={0}
           label="Sessions taught"
           value={analytics?.sessionsTaught ?? 0}
           icon="school-outline"
         />
         <StatTile
+          index={1}
           label="Hours learned"
           value={analytics?.hoursLearned ?? 0}
           icon="book-outline"
-          tone="success"
+          tone="accent"
         />
         <StatTile
+          index={2}
           label="Day streak"
           value={analytics?.streakDays ?? 0}
           icon="flame-outline"
@@ -166,9 +197,10 @@ export function HomeScreen() {
       {upcoming && upcoming.items.length > 0 ? (
         upcoming.items
           .slice(0, 2)
-          .map((session) => (
+          .map((session, i) => (
             <SessionCard
               key={session._id}
+              index={i}
               session={session}
               currentUserId={user?.id ?? ''}
               onPress={() => navigation.navigate('SessionDetails', { sessionId: session._id })}
@@ -187,9 +219,10 @@ export function HomeScreen() {
           onAction={() => navigation.navigate('Tabs', { screen: 'MatchesTab' })}
         />
         {matches && matches.items.length > 0 ? (
-          matches.items.map((match) => (
+          matches.items.map((match, i) => (
             <MatchCard
               key={match.id}
+              index={i}
               match={match}
               onPress={() => navigation.navigate('StudentProfile', { userId: match.id })}
               onRequest={() =>

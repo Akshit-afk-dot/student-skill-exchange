@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { ReactNode } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -15,8 +16,21 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 import { useTheme, type Theme } from '../theme';
+import { haptics } from '../utils/haptics';
+import { useCountUp } from '../hooks/useCountUp';
+import { LAYOUT_ANIMATIONS_SUPPORTED, PressableScale } from './motion';
 
 /** Screen wrapper: safe-area aware, themed background, optional scrolling. */
 export function Screen({
@@ -45,12 +59,17 @@ export function Screen({
         <ScrollView
           contentContainerStyle={[inner, { flexGrow: 1 }]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
           refreshControl={
             onRefresh ? (
               <RefreshControl
                 refreshing={Boolean(refreshing)}
-                onRefresh={onRefresh}
+                onRefresh={() => {
+                  haptics.tap();
+                  onRefresh();
+                }}
                 tintColor={t.colors.primary}
+                colors={[t.colors.primary]}
               />
             ) : undefined
           }
@@ -61,6 +80,25 @@ export function Screen({
         <View style={[{ flex: 1 }, inner]}>{children}</View>
       )}
     </SafeAreaView>
+  );
+}
+
+/* ---------- Typography ---------- */
+
+export function Display({
+  children,
+  style,
+  numberOfLines,
+}: {
+  children: ReactNode;
+  style?: StyleProp<TextStyle>;
+  numberOfLines?: number;
+}) {
+  const t = useTheme();
+  return (
+    <Text numberOfLines={numberOfLines} style={[t.typography.display, { color: t.colors.text }, style]}>
+      {children}
+    </Text>
   );
 }
 
@@ -146,40 +184,66 @@ export function Caption({
   );
 }
 
+/** Small uppercase label that opens a section. */
+export function Overline({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
+  const t = useTheme();
+  return (
+    <Text
+      style={[
+        {
+          color: t.colors.textMuted,
+          fontSize: 11,
+          fontWeight: '700',
+          letterSpacing: 0.8,
+          textTransform: 'uppercase',
+        },
+        style,
+      ]}
+    >
+      {children}
+    </Text>
+  );
+}
+
+/* ---------- Surfaces ---------- */
+
 export function Card({
   children,
   onPress,
   style,
+  elevated = 1,
+  tint,
 }: {
   children: ReactNode;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
+  elevated?: 0 | 1 | 2 | 3;
+  /** Optional background tint, for cards that need to stand out. */
+  tint?: string;
 }) {
   const t = useTheme();
   const base: StyleProp<ViewStyle> = [
     {
-      backgroundColor: t.colors.surface,
+      backgroundColor: tint ?? t.colors.surface,
       borderRadius: t.radius.lg,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
       padding: t.spacing.lg,
     },
+    t.elevation(elevated),
     style,
   ];
 
   if (!onPress) return <View style={base}>{children}</View>;
 
   return (
-    <Pressable
-      onPress={onPress}
-      // A pressed card dims rather than scales, which reads better in a list.
-      style={({ pressed }) => [base, pressed && { opacity: 0.7 }]}
-      accessibilityRole="button"
-    >
+    <PressableScale onPress={onPress} style={base} scaleTo={0.98}>
       {children}
-    </Pressable>
+    </PressableScale>
   );
 }
+
+/* ---------- Button ---------- */
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -191,6 +255,7 @@ export function Button({
   loading = false,
   icon,
   fullWidth = true,
+  haptic,
   style,
 }: {
   label: string;
@@ -200,10 +265,66 @@ export function Button({
   loading?: boolean;
   icon?: keyof typeof Ionicons.glyphMap;
   fullWidth?: boolean;
+  /** Override the default feel; primary presses are weightier than ghost ones. */
+  haptic?: keyof typeof haptics | null;
   style?: StyleProp<ViewStyle>;
 }) {
   const t = useTheme();
   const isDisabled = disabled || loading;
+
+  const fg =
+    variant === 'primary' || variant === 'danger' ? t.colors.textInverse : t.colors.text;
+
+  const defaultHaptic: keyof typeof haptics =
+    variant === 'primary' ? 'press' : variant === 'danger' ? 'reject' : 'tap';
+
+  const content = (
+    <>
+      {loading ? (
+        <ActivityIndicator color={fg} size="small" />
+      ) : (
+        <>
+          {icon ? <Ionicons name={icon} size={17} color={fg} /> : null}
+          <Text style={{ color: fg, fontSize: 15, fontWeight: '600', letterSpacing: 0.1 }}>
+            {label}
+          </Text>
+        </>
+      )}
+    </>
+  );
+
+  const shape: ViewStyle = {
+    borderRadius: t.radius.md,
+    paddingVertical: 14,
+    paddingHorizontal: t.spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: t.spacing.sm,
+    alignSelf: fullWidth ? 'stretch' : 'flex-start',
+  };
+
+  // Primary gets a gradient; the rest stay flat so the hierarchy reads at a glance.
+  if (variant === 'primary' && !isDisabled) {
+    return (
+      <PressableScale
+        onPress={onPress}
+        disabled={isDisabled}
+        haptic={haptic === undefined ? defaultHaptic : haptic}
+        accessibilityLabel={label}
+        style={[{ borderRadius: t.radius.md, alignSelf: fullWidth ? 'stretch' : 'flex-start' }, t.elevation(1), style]}
+      >
+        <LinearGradient
+          colors={t.gradients.primary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={shape}
+        >
+          {content}
+        </LinearGradient>
+      </PressableScale>
+    );
+  }
 
   const bg =
     variant === 'primary'
@@ -214,44 +335,29 @@ export function Button({
           ? t.colors.surfaceAlt
           : 'transparent';
 
-  const fg =
-    variant === 'primary' || variant === 'danger' ? t.colors.textInverse : t.colors.text;
-
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       disabled={isDisabled}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: isDisabled, busy: loading }}
-      style={({ pressed }) => [
+      haptic={haptic === undefined ? defaultHaptic : haptic}
+      accessibilityLabel={label}
+      style={[
+        shape,
         {
           backgroundColor: bg,
-          borderRadius: t.radius.md,
-          paddingVertical: 13,
-          paddingHorizontal: t.spacing.lg,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: t.spacing.sm,
-          alignSelf: fullWidth ? 'stretch' : 'flex-start',
           borderWidth: variant === 'ghost' ? StyleSheet.hairlineWidth : 0,
-          borderColor: t.colors.border,
-          opacity: isDisabled ? 0.5 : pressed ? 0.85 : 1,
+          borderColor: t.colors.borderStrong,
         },
+        variant === 'danger' ? t.elevation(1) : undefined,
         style,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator color={fg} size="small" />
-      ) : (
-        <>
-          {icon ? <Ionicons name={icon} size={17} color={fg} /> : null}
-          <Text style={{ color: fg, fontSize: 15, fontWeight: '600' }}>{label}</Text>
-        </>
-      )}
-    </Pressable>
+      {content}
+    </PressableScale>
   );
 }
+
+/* ---------- Form ---------- */
 
 export function Field({
   label,
@@ -265,55 +371,66 @@ export function Field({
   children: ReactNode;
 }) {
   const t = useTheme();
+
+  // A newly-appearing error should announce itself rather than just materialise.
   return (
     <View style={{ marginBottom: t.spacing.lg }}>
-      <Text
-        style={{
-          ...t.typography.caption,
-          color: t.colors.textMuted,
-          marginBottom: t.spacing.xs,
-          textTransform: 'uppercase',
-          letterSpacing: 0.4,
-        }}
-      >
-        {label}
-      </Text>
+      <Overline style={{ marginBottom: 6 }}>{label}</Overline>
       {children}
       {error ? (
-        <Text style={{ color: t.colors.danger, fontSize: 12, marginTop: 4 }}>{error}</Text>
+        <Animated.View
+          entering={LAYOUT_ANIMATIONS_SUPPORTED ? FadeInDown.duration(t.motion.fast) : undefined}
+        >
+          <Text style={{ color: t.colors.danger, fontSize: 12, marginTop: 5, fontWeight: '500' }}>
+            {error}
+          </Text>
+        </Animated.View>
       ) : hint ? (
-        <Text style={{ color: t.colors.textMuted, fontSize: 12, marginTop: 4 }}>{hint}</Text>
+        <Text style={{ color: t.colors.textMuted, fontSize: 12, marginTop: 5 }}>{hint}</Text>
       ) : null}
     </View>
   );
 }
 
-export function Input({
-  error,
-  style,
-  ...props
-}: TextInputProps & { error?: boolean }) {
+export function Input({ error, style, onFocus, onBlur, ...props }: TextInputProps & { error?: boolean }) {
   const t = useTheme();
+  const focus = useSharedValue(0);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    borderColor: focus.value > 0.5 ? t.colors.primary : error ? t.colors.danger : t.colors.border,
+    borderWidth: interpolate(focus.value, [0, 1], [StyleSheet.hairlineWidth, 1.6]),
+  }));
+
   return (
-    <TextInput
-      placeholderTextColor={t.colors.textMuted}
-      style={[
-        {
-          backgroundColor: t.colors.surface,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: error ? t.colors.danger : t.colors.border,
-          borderRadius: t.radius.md,
-          paddingHorizontal: t.spacing.md,
-          paddingVertical: 12,
-          fontSize: 15,
-          color: t.colors.text,
-        },
-        style,
-      ]}
-      {...props}
-    />
+    <Animated.View style={[{ borderRadius: t.radius.md }, animatedStyle]}>
+      <TextInput
+        placeholderTextColor={t.colors.textMuted}
+        onFocus={(e) => {
+          focus.value = withTiming(1, { duration: t.motion.instant });
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          focus.value = withTiming(0, { duration: t.motion.instant });
+          onBlur?.(e);
+        }}
+        style={[
+          {
+            backgroundColor: t.colors.surface,
+            borderRadius: t.radius.md,
+            paddingHorizontal: t.spacing.md,
+            paddingVertical: 13,
+            fontSize: 15,
+            color: t.colors.text,
+          },
+          style,
+        ]}
+        {...props}
+      />
+    </Animated.View>
   );
 }
+
+/* ---------- Identity ---------- */
 
 export function Avatar({
   name,
@@ -343,32 +460,34 @@ export function Avatar({
           accessibilityIgnoresInvertColors
         />
       ) : (
-        <View
+        <LinearGradient
+          colors={t.gradients.primary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={{
             width: size,
             height: size,
             borderRadius: size / 2,
-            backgroundColor: t.colors.primarySoft,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: t.colors.primary, fontWeight: '700', fontSize: size * 0.36 }}>
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: size * 0.36 }}>
             {initials || '?'}
           </Text>
-        </View>
+        </LinearGradient>
       )}
       {online ? (
         <View
           style={{
             position: 'absolute',
-            right: 0,
-            bottom: 0,
-            width: size * 0.28,
-            height: size * 0.28,
-            borderRadius: size * 0.14,
+            right: -1,
+            bottom: -1,
+            width: size * 0.3,
+            height: size * 0.3,
+            borderRadius: size * 0.15,
             backgroundColor: t.colors.success,
-            borderWidth: 2,
+            borderWidth: 2.5,
             borderColor: t.colors.surface,
           }}
         />
@@ -377,7 +496,26 @@ export function Avatar({
   );
 }
 
-type Tone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger';
+/* ---------- Chips & ratings ---------- */
+
+type Tone = 'neutral' | 'primary' | 'accent' | 'success' | 'warning' | 'danger';
+
+function toneColours(t: Theme, tone: Tone): { bg: string; fg: string } {
+  switch (tone) {
+    case 'primary':
+      return { bg: t.colors.primarySoft, fg: t.colors.primary };
+    case 'accent':
+      return { bg: t.colors.accentSoft, fg: t.colors.accent };
+    case 'success':
+      return { bg: t.colors.successSoft, fg: t.colors.success };
+    case 'warning':
+      return { bg: t.colors.warningSoft, fg: t.colors.warning };
+    case 'danger':
+      return { bg: t.colors.dangerSoft, fg: t.colors.danger };
+    default:
+      return { bg: t.colors.surfaceAlt, fg: t.colors.textMuted };
+  }
+}
 
 export function Chip({
   label,
@@ -393,39 +531,43 @@ export function Chip({
   selected?: boolean;
 }) {
   const t = useTheme();
-  const map: Record<Tone, { bg: string; fg: string }> = {
-    neutral: { bg: t.colors.surfaceAlt, fg: t.colors.textMuted },
-    primary: { bg: t.colors.primarySoft, fg: t.colors.primary },
-    success: { bg: t.colors.successSoft, fg: t.colors.success },
-    warning: { bg: t.colors.warningSoft, fg: t.colors.warning },
-    danger: { bg: t.colors.dangerSoft, fg: t.colors.danger },
-  };
-  const c = selected ? map.primary : map[tone];
+  const c = selected ? toneColours(t, 'primary') : toneColours(t, tone);
 
-  const content = (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 5,
-        backgroundColor: c.bg,
-        borderRadius: t.radius.pill,
-        paddingHorizontal: 11,
-        paddingVertical: 5,
-        borderWidth: selected ? 1 : 0,
-        borderColor: t.colors.primary,
-      }}
+  const scale = useSharedValue(1);
+  useEffect(() => {
+    // A small pop confirms the selection changed without needing a colour hunt.
+    scale.value = withSpring(selected ? 1.04 : 1, t.motion.pressSpring);
+  }, [selected, scale, t.motion.pressSpring]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const body = (
+    <Animated.View
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 5,
+          backgroundColor: c.bg,
+          borderRadius: t.radius.pill,
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          borderWidth: selected ? 1.4 : 0,
+          borderColor: t.colors.primary,
+        },
+        animatedStyle,
+      ]}
     >
       {icon ? <Ionicons name={icon} size={13} color={c.fg} /> : null}
       <Text style={{ color: c.fg, fontSize: 12.5, fontWeight: '600' }}>{label}</Text>
-    </View>
+    </Animated.View>
   );
 
-  if (!onPress) return content;
+  if (!onPress) return body;
   return (
-    <Pressable onPress={onPress} accessibilityRole="button">
-      {content}
-    </Pressable>
+    <PressableScale onPress={onPress} haptic="selection" scaleTo={0.94} accessibilityLabel={label}>
+      {body}
+    </PressableScale>
   );
 }
 
@@ -441,32 +583,35 @@ export function StarRating({
   showValue?: boolean;
 }) {
   const t = useTheme();
-  if (!value && !count) {
-    return <Caption>No ratings yet</Caption>;
-  }
+  if (!value && !count) return <Caption>No ratings yet</Caption>;
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
       <Ionicons name="star" size={size} color={t.colors.star} />
       {showValue ? (
-        <Text style={{ color: t.colors.text, fontSize: size - 1, fontWeight: '600' }}>
+        <Text
+          style={{
+            color: t.colors.text,
+            fontSize: size - 1,
+            fontWeight: '700',
+            fontVariant: ['tabular-nums'],
+          }}
+        >
           {value.toFixed(1)}
         </Text>
       ) : null}
       {count !== undefined ? (
-        <Text style={{ color: t.colors.textMuted, fontSize: size - 2 }}>
-          ({count})
-        </Text>
+        <Text style={{ color: t.colors.textMuted, fontSize: size - 2 }}>({count})</Text>
       ) : null}
     </View>
   );
 }
 
-/** Tappable 1-5 star input used by the review form. */
+/** Tappable 1-5 star input. Each star pops and ticks as it is selected. */
 export function StarPicker({
   value,
   onChange,
-  size = 34,
+  size = 38,
 }: {
   value: number;
   onChange(next: number): void;
@@ -476,24 +621,67 @@ export function StarPicker({
   return (
     <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
       {[1, 2, 3, 4, 5].map((n) => (
-        <Pressable
-          key={n}
-          onPress={() => onChange(n)}
-          accessibilityRole="radio"
-          accessibilityState={{ selected: value === n }}
-          accessibilityLabel={`${n} star${n === 1 ? '' : 's'}`}
-          hitSlop={6}
-        >
-          <Ionicons
-            name={n <= value ? 'star' : 'star-outline'}
-            size={size}
-            color={n <= value ? t.colors.star : t.colors.border}
-          />
-        </Pressable>
+        <StarButton key={n} n={n} value={value} size={size} onChange={onChange} theme={t} />
       ))}
     </View>
   );
 }
+
+function StarButton({
+  n,
+  value,
+  size,
+  onChange,
+  theme,
+}: {
+  n: number;
+  value: number;
+  size: number;
+  onChange(next: number): void;
+  theme: Theme;
+}) {
+  const filled = n <= value;
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    if (!filled) {
+      scale.value = withSpring(1, theme.motion.pressSpring);
+      return;
+    }
+    // Stagger by position so selecting 4 stars ripples left to right.
+    scale.value = withDelay(
+      n * 45,
+      withSpring(1.25, theme.motion.pressSpring, () => {
+        scale.value = withSpring(1, theme.motion.pressSpring);
+      }),
+    );
+  }, [filled, n, scale, theme.motion.pressSpring]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  return (
+    <Pressable
+      onPress={() => {
+        haptics.selection();
+        onChange(n);
+      }}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: value === n }}
+      accessibilityLabel={`${n} star${n === 1 ? '' : 's'}`}
+      hitSlop={6}
+    >
+      <Animated.View style={animatedStyle}>
+        <Ionicons
+          name={filled ? 'star' : 'star-outline'}
+          size={size}
+          color={filled ? theme.colors.star : theme.colors.borderStrong}
+        />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+/* ---------- States ---------- */
 
 export function LoadingView({ label }: { label?: string }) {
   const t = useTheme();
@@ -520,23 +708,26 @@ export function EmptyState({
 }) {
   const t = useTheme();
   return (
-    <View style={{ alignItems: 'center', paddingVertical: t.spacing.xxl, paddingHorizontal: t.spacing.lg }}>
-      <View
+    <Animated.View
+      entering={LAYOUT_ANIMATIONS_SUPPORTED ? FadeIn.duration(t.motion.slow) : undefined}
+      style={{ alignItems: 'center', paddingVertical: t.spacing.xxl, paddingHorizontal: t.spacing.lg }}
+    >
+      <LinearGradient
+        colors={[t.colors.primarySoft, t.colors.surfaceAlt]}
         style={{
-          width: 60,
-          height: 60,
-          borderRadius: 30,
-          backgroundColor: t.colors.surfaceAlt,
+          width: 74,
+          height: 74,
+          borderRadius: 37,
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: t.spacing.lg,
         }}
       >
-        <Ionicons name={icon} size={28} color={t.colors.textMuted} />
-      </View>
+        <Ionicons name={icon} size={32} color={t.colors.primary} />
+      </LinearGradient>
       <Heading style={{ textAlign: 'center' }}>{title}</Heading>
       {message ? (
-        <Body muted style={{ textAlign: 'center', marginTop: t.spacing.sm }}>
+        <Body muted style={{ textAlign: 'center', marginTop: t.spacing.sm, lineHeight: 21 }}>
           {message}
         </Body>
       ) : null}
@@ -548,7 +739,7 @@ export function EmptyState({
           style={{ marginTop: t.spacing.lg }}
         />
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -566,29 +757,37 @@ export function ErrorView({ message, onRetry }: { message: string; onRetry?: () 
 
 export function Banner({ tone = 'primary', text }: { tone?: Tone; text: string }) {
   const t = useTheme();
-  const map: Record<Tone, { bg: string; fg: string }> = {
-    neutral: { bg: t.colors.surfaceAlt, fg: t.colors.text },
-    primary: { bg: t.colors.primarySoft, fg: t.colors.primary },
-    success: { bg: t.colors.successSoft, fg: t.colors.success },
-    warning: { bg: t.colors.warningSoft, fg: t.colors.warning },
-    danger: { bg: t.colors.dangerSoft, fg: t.colors.danger },
-  };
-  const c = map[tone];
+  const c = toneColours(t, tone);
+
+  // Errors that appear mid-flow should be felt, not just seen.
+  useEffect(() => {
+    if (tone === 'danger') haptics.error();
+    else if (tone === 'success') haptics.success();
+  }, [tone, text]);
 
   return (
-    <View
+    <Animated.View
+      entering={
+        LAYOUT_ANIMATIONS_SUPPORTED
+          ? FadeInDown.duration(t.motion.fast).springify().damping(18)
+          : undefined
+      }
       style={{
         backgroundColor: c.bg,
         borderRadius: t.radius.md,
         padding: t.spacing.md,
         marginBottom: t.spacing.lg,
+        borderLeftWidth: 3,
+        borderLeftColor: c.fg,
       }}
       accessibilityRole="alert"
     >
-      <Text style={{ color: c.fg, fontSize: 14, fontWeight: '500' }}>{text}</Text>
-    </View>
+      <Text style={{ color: c.fg, fontSize: 14, fontWeight: '500', lineHeight: 19 }}>{text}</Text>
+    </Animated.View>
   );
 }
+
+/* ---------- Layout ---------- */
 
 export function Divider({ spacing: gap }: { spacing?: number }) {
   const t = useTheme();
@@ -641,58 +840,88 @@ export function SectionHeader({
     >
       <Heading>{title}</Heading>
       {actionLabel && onAction ? (
-        <Pressable onPress={onAction} accessibilityRole="button" hitSlop={8}>
-          <Text style={{ color: t.colors.primary, fontSize: 14, fontWeight: '600' }}>
-            {actionLabel}
-          </Text>
-        </Pressable>
+        <PressableScale onPress={onAction} haptic="tap" scaleTo={0.94}>
+          <Row gap={2}>
+            <Text style={{ color: t.colors.primary, fontSize: 14, fontWeight: '600' }}>
+              {actionLabel}
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color={t.colors.primary} />
+          </Row>
+        </PressableScale>
       ) : null}
     </View>
   );
 }
 
-/** Compact statistic tile used on the home and analytics screens. */
+/**
+ * Compact statistic tile. The number counts up on mount, which makes a dashboard feel
+ * like it is reporting something rather than just rendering.
+ */
 export function StatTile({
   label,
   value,
   icon,
   tone = 'primary',
+  index = 0,
 }: {
   label: string;
   value: string | number;
   icon?: keyof typeof Ionicons.glyphMap;
   tone?: Tone;
+  index?: number;
 }) {
   const t = useTheme();
-  const colour =
-    tone === 'success'
-      ? t.colors.success
-      : tone === 'warning'
-        ? t.colors.warning
-        : tone === 'danger'
-          ? t.colors.danger
-          : t.colors.primary;
+  const c = toneColours(t, tone);
+
+  const numeric = typeof value === 'number' ? value : null;
+  // Fractional stats (hours) keep a decimal; counts stay whole.
+  const decimals = numeric !== null && !Number.isInteger(numeric) ? 1 : 0;
+  const counted = useCountUp(numeric ?? 0, { duration: 800, delay: index * 70, decimals });
 
   return (
-    <View
-      style={{
-        flex: 1,
-        minWidth: 100,
-        backgroundColor: t.colors.surface,
-        borderRadius: t.radius.md,
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: t.colors.border,
-        padding: t.spacing.md,
-      }}
+    <Animated.View
+      entering={
+        LAYOUT_ANIMATIONS_SUPPORTED
+          ? FadeInDown.delay(index * 70).duration(t.motion.normal).springify().damping(18)
+          : undefined
+      }
+      style={[
+        {
+          flex: 1,
+          minWidth: 96,
+          backgroundColor: t.colors.surface,
+          borderRadius: t.radius.lg,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: t.colors.border,
+          padding: t.spacing.md,
+        },
+        t.elevation(1),
+      ]}
     >
-      {icon ? <Ionicons name={icon} size={17} color={colour} /> : null}
-      <Text style={{ color: t.colors.text, fontSize: 20, fontWeight: '700', marginTop: 6 }}>
-        {value}
+      {icon ? (
+        <View
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 9,
+            backgroundColor: c.bg,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 8,
+          }}
+        >
+          <Ionicons name={icon} size={15} color={c.fg} />
+        </View>
+      ) : null}
+
+      <Text style={[t.typography.numeric, { color: t.colors.text }]}>
+        {numeric === null ? value : decimals > 0 ? counted.toFixed(1) : counted}
       </Text>
-      <Text style={{ color: t.colors.textMuted, fontSize: 12 }} numberOfLines={2}>
+
+      <Text style={{ color: t.colors.textMuted, fontSize: 12, marginTop: 1 }} numberOfLines={2}>
         {label}
       </Text>
-    </View>
+    </Animated.View>
   );
 }
 

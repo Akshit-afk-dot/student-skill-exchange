@@ -50,3 +50,6 @@ Thumbs.db
 .bundle-check.log
 .scratch-web.log
 .ci-export/
+
+# Bundle probe output
+.probe-export/

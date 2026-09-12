@@ -185,7 +185,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   if (res.status === 204) return undefined as T;
 
   const text = await res.text();
-  let json: unknown = {};
+  let json: unknown;
   try {
     json = text ? JSON.parse(text) : {};
   } catch {

@@ -49,6 +49,9 @@ declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace ReactNavigation {
     // Gives `navigation.navigate` autocomplete everywhere without importing the type.
+    // The empty body is the point — this is React Navigation's documented module
+    // augmentation, which works by interface merging rather than by adding members.
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface RootParamList extends RootStackParamList {}
   }
 }

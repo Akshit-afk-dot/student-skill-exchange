@@ -36,6 +36,10 @@ jobs:
         working-directory: server
         run: npm run typecheck
 
+      - name: Lint
+        working-directory: server
+        run: npm run lint
+
       - name: Build
         working-directory: server
         run: npm run build
@@ -89,6 +93,10 @@ jobs:
       - name: Typecheck
         working-directory: mobile
         run: npm run typecheck
+
+      - name: Lint
+        working-directory: mobile
+        run: npm run lint
 
       # A full Metro bundle catches import and resolution errors that tsc cannot see.
       - name: Bundle

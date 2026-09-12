@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { chat } from '../api/endpoints';
 import { RT, emitTyping, joinConversation, leaveConversation, onEvent } from '../api/socket';
+import Animated, { SlideInLeft, SlideInRight } from 'react-native-reanimated';
 import { Banner, Body, Caption, Input, LoadingView, Row, Screen } from '../components/ui';
+import { haptics } from '../utils/haptics';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
 import { chatTimestamp } from '../utils/format';
@@ -68,6 +70,7 @@ export function ChatScreen() {
         // The sender also receives their own message over the socket; the optimistic
         // copy is already in the list, so drop the duplicate.
         if (prev.some((m) => m._id === incoming._id)) return prev;
+        haptics.selection();
         return [incoming, ...prev];
       });
       // Reading it as it arrives keeps the unread badge honest.
@@ -108,6 +111,7 @@ export function ChatScreen() {
 
     try {
       const message = await chat.send(conversationId, { body, type: 'TEXT' });
+      haptics.tap();
       setMessages((prev) => (prev.some((m) => m._id === message._id) ? prev : [message, ...prev]));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Message could not be sent');
@@ -168,7 +172,10 @@ export function ChatScreen() {
             const senderId = typeof item.sender === 'string' ? item.sender : item.sender._id;
             const mine = senderId === user?.id;
             return (
-              <View
+              <Animated.View
+                // Bubbles slide in from the side they belong to, which makes a new
+                // message read as arriving rather than simply appearing.
+                entering={(mine ? SlideInRight : SlideInLeft).duration(220).springify().damping(20)}
                 style={{
                   alignSelf: mine ? 'flex-end' : 'flex-start',
                   maxWidth: '82%',
@@ -200,7 +207,7 @@ export function ChatScreen() {
                     />
                   ) : null}
                 </Row>
-              </View>
+              </Animated.View>
             );
           }}
         />

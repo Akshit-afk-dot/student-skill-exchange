@@ -10,11 +10,11 @@ import {
   Card,
   Chip,
   EmptyState,
-  LoadingView,
   Row,
   Screen,
   Title,
 } from '../components/ui';
+import { SkeletonList } from '../components/motion';
 import { useAsync } from '../hooks/useAsync';
 import { useTheme } from '../theme';
 import { plural } from '../utils/format';
@@ -100,7 +100,9 @@ export function MatchesScreen() {
       </View>
 
       {state.loading ? (
-        <LoadingView label="Scoring your matches…" />
+        <View style={{ paddingHorizontal: t.spacing.lg }}>
+          <SkeletonList count={3} lines={3} />
+        </View>
       ) : (
         <FlatList
           data={state.data?.items ?? []}
@@ -124,8 +126,9 @@ export function MatchesScreen() {
               }
             />
           }
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <MatchCard
+              index={index}
               match={item}
               onPress={() => navigation.navigate('StudentProfile', { userId: item.id })}
               onRequest={() =>

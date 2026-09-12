@@ -10,11 +10,11 @@ import {
   Chip,
   EmptyState,
   Input,
-  LoadingView,
   Row,
   Screen,
   Title,
 } from '../components/ui';
+import { SkeletonList } from '../components/motion';
 import { useAsync } from '../hooks/useAsync';
 import { useTheme } from '../theme';
 import { LEVEL_LABEL, plural } from '../utils/format';
@@ -113,7 +113,9 @@ export function SearchResultsScreen() {
       </View>
 
       {state.loading ? (
-        <LoadingView />
+        <View style={{ paddingHorizontal: t.spacing.lg }}>
+          <SkeletonList count={4} lines={1} />
+        </View>
       ) : (
         <FlatList
           data={state.data?.items ?? []}
@@ -133,8 +135,9 @@ export function SearchResultsScreen() {
               }
             />
           }
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <StudentCard
+              index={index}
               student={item}
               onPress={() => navigation.navigate('StudentProfile', { userId: item.id })}
             />

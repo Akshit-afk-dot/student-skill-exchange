@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { requests as requestsApi } from '../api/endpoints';
 import { RequestCard } from '../components/cards';
@@ -10,11 +10,12 @@ import {
   Button,
   Chip,
   EmptyState,
-  LoadingView,
   Row,
   Screen,
   Title,
 } from '../components/ui';
+import { SkeletonList } from '../components/motion';
+import { haptics } from '../utils/haptics';
 import { useAction, useAsync } from '../hooks/useAsync';
 import { useTheme } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
@@ -26,17 +27,23 @@ export function LearningRequestsScreen() {
 
   const state = useAsync(async () => requestsApi.list({ direction, page: 1 }), [direction]);
 
+  // Accepting creates a connection, so it gets the success notification pattern;
+  // declining and withdrawing get a duller thud. The difference is deliberate —
+  // the two outcomes should not feel the same in the hand.
   const accept = useAction(async (id: string) => {
     const result = await requestsApi.accept(id);
+    haptics.success();
     state.reload();
     return result;
   });
   const reject = useAction(async (id: string) => {
     await requestsApi.reject(id);
+    haptics.reject();
     state.reload();
   });
   const cancel = useAction(async (id: string) => {
     await requestsApi.cancel(id);
+    haptics.reject();
     state.reload();
   });
 
@@ -62,7 +69,9 @@ export function LearningRequestsScreen() {
       </View>
 
       {state.loading ? (
-        <LoadingView />
+        <View style={{ paddingHorizontal: t.spacing.lg }}>
+          <SkeletonList count={3} lines={2} />
+        </View>
       ) : (
         <FlatList
           data={state.data?.items ?? []}
@@ -89,8 +98,9 @@ export function LearningRequestsScreen() {
               onAction={() => navigation.navigate('Tabs', { screen: 'MatchesTab' })}
             />
           }
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <RequestCard
+              index={index}
               request={item}
               direction={direction}
               onPress={() =>

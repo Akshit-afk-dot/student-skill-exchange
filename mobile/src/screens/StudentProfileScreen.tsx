@@ -14,14 +14,16 @@ import {
   Chip,
   Divider,
   ErrorView,
-  Heading,
   LoadingView,
+  Overline,
   Row,
   Screen,
   SectionHeader,
   StarRating,
   Title,
 } from '../components/ui';
+import { ScoreRing, ScoreBar } from '../components/ScoreRing';
+import { FadeInView } from '../components/motion';
 import { useAsync } from '../hooks/useAsync';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
@@ -84,25 +86,69 @@ export function StudentProfileScreen() {
       </Row>
 
       {match ? (
-        <Card style={{ marginTop: t.spacing.lg }}>
-          <Row style={{ justifyContent: 'space-between' }}>
-            <Heading>{match.matchPercent}% match</Heading>
-            {match.twoWay ? <Chip label="Two-way" tone="success" icon="swap-horizontal" /> : null}
-          </Row>
-          <View style={{ marginTop: t.spacing.md, gap: 5 }}>
-            {match.reasons
-              .map((r) => reasonText(r, skillNames))
-              .filter(Boolean)
-              .map((text) => (
-                <Row key={text} gap={6}>
-                  <Ionicons name="checkmark-circle" size={14} color={t.colors.success} />
-                  <Body small style={{ flex: 1 }}>
-                    {text}
-                  </Body>
-                </Row>
-              ))}
-          </View>
-        </Card>
+        <FadeInView delay={120}>
+          <Card style={{ marginTop: t.spacing.lg }} elevated={2}>
+            <Row gap={t.spacing.lg}>
+              <ScoreRing
+                percent={match.matchPercent}
+                size={86}
+                twoWay={match.twoWay}
+                label="match"
+                delay={200}
+              />
+              <View style={{ flex: 1, gap: 5 }}>
+                {match.twoWay ? (
+                  <Row style={{ marginBottom: 2 }}>
+                    <Chip label="Two-way exchange" tone="success" icon="swap-horizontal" />
+                  </Row>
+                ) : null}
+                {match.reasons
+                  .map((r) => reasonText(r, skillNames))
+                  .filter(Boolean)
+                  .slice(0, 4)
+                  .map((text) => (
+                    <Row key={text} gap={6}>
+                      <Ionicons name="checkmark-circle" size={14} color={t.colors.success} />
+                      <Caption style={{ flex: 1, lineHeight: 17 }}>{text}</Caption>
+                    </Row>
+                  ))}
+              </View>
+            </Row>
+
+            {/* The component breakdown. Showing the working makes the score
+                auditable instead of asking the student to trust a number. */}
+            <View
+              style={{
+                marginTop: t.spacing.lg,
+                paddingTop: t.spacing.lg,
+                borderTopWidth: 1,
+                borderTopColor: t.colors.border,
+              }}
+            >
+              <Overline style={{ marginBottom: t.spacing.md }}>How this score is built</Overline>
+              <ScoreBar label="Skill fit" value={match.breakdown.skill ?? 0} weight={0.4} index={0} />
+              <ScoreBar
+                label="Shared free time"
+                value={match.breakdown.availability ?? 0}
+                weight={0.2}
+                index={1}
+              />
+              <ScoreBar
+                label="Experience level"
+                value={match.breakdown.experience ?? 0}
+                weight={0.15}
+                index={2}
+              />
+              <ScoreBar label="Rating" value={match.breakdown.rating ?? 0} weight={0.15} index={3} />
+              <ScoreBar
+                label="Location"
+                value={match.breakdown.location ?? 0}
+                weight={0.1}
+                index={4}
+              />
+            </View>
+          </Card>
+        </FadeInView>
       ) : null}
 
       {profile.bio ? (

@@ -13,7 +13,6 @@ import {
   Chip,
   Divider,
   ErrorView,
-  Heading,
   LoadingView,
   Row,
   Screen,

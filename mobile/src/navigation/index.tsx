@@ -4,9 +4,11 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { chat, requests } from '../api/endpoints';
 import { RT, onEvent } from '../api/socket';
 import { Caption, LoadingView } from '../components/ui';
+import { haptics } from '../utils/haptics';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
 
@@ -85,6 +87,45 @@ function TabBadge({ count }: { count: number }) {
   );
 }
 
+/**
+ * Tab icon that lifts and swells when its tab becomes active.
+ *
+ * Small, but it is the interaction a user performs most often in the app, so it is the
+ * one most worth making feel deliberate.
+ */
+function TabIcon({
+  focused,
+  name,
+  activeName,
+  color,
+  size,
+  badge,
+}: {
+  focused: boolean;
+  name: keyof typeof Ionicons.glyphMap;
+  activeName: keyof typeof Ionicons.glyphMap;
+  color: string;
+  size: number;
+  badge?: number;
+}) {
+  const lift = useSharedValue(focused ? 1 : 0);
+
+  useEffect(() => {
+    lift.value = withSpring(focused ? 1 : 0, { damping: 14, stiffness: 260, mass: 0.6 });
+  }, [focused, lift]);
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateY: -3 * lift.value }, { scale: 1 + 0.12 * lift.value }],
+  }));
+
+  return (
+    <Animated.View style={style}>
+      <Ionicons name={focused ? activeName : name} size={size} color={color} />
+      {badge !== undefined ? <TabBadge count={badge} /> : null}
+    </Animated.View>
+  );
+}
+
 const TAB_ICONS: Record<keyof MainTabParamList, { on: keyof typeof Ionicons.glyphMap; off: keyof typeof Ionicons.glyphMap }> = {
   HomeTab: { on: 'home', off: 'home-outline' },
   ExploreTab: { on: 'compass', off: 'compass-outline' },
@@ -127,13 +168,21 @@ function TabNavigator() {
         tabBarIcon: ({ focused, color, size }) => {
           const icons = TAB_ICONS[route.name];
           return (
-            <View>
-              <Ionicons name={focused ? icons.on : icons.off} size={size} color={color} />
-              {route.name === 'ChatsTab' ? <TabBadge count={unreadChats} /> : null}
-            </View>
+            <TabIcon
+              focused={focused}
+              name={icons.off}
+              activeName={icons.on}
+              color={color}
+              size={size}
+              {...(route.name === 'ChatsTab' ? { badge: unreadChats } : {})}
+            />
           );
         },
       })}
+      screenListeners={{
+        // A tick on every tab change, so switching sections is felt as well as seen.
+        tabPress: () => haptics.selection(),
+      }}
     >
       <Tabs.Screen name="HomeTab" component={HomeScreen} options={{ title: 'Home' }} />
       <Tabs.Screen name="ExploreTab" component={ExploreScreen} options={{ title: 'Explore' }} />
