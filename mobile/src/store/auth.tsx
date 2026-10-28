@@ -85,6 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Callers must await this: it persists the tokens before reporting success, so the
+  // caller's try/catch sees a failed keystore write rather than letting it escape as an
+  // unhandled rejection with the form showing no error.
   const applyAuth = useCallback(
     async (payload: { user: SelfUser; tokens: { accessToken: string; refreshToken: string } }) => {
       await saveTokens(payload.tokens.accessToken, payload.tokens.refreshToken);
@@ -96,21 +99,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(
     async (email: string, password: string) => {
-      applyAuth(await authApi.login(email, password));
+      await applyAuth(await authApi.login(email, password));
     },
     [applyAuth],
   );
 
   const signInWithGoogle = useCallback(
     async (idToken: string) => {
-      applyAuth(await authApi.google(idToken));
+      await applyAuth(await authApi.google(idToken));
     },
     [applyAuth],
   );
 
   const register = useCallback(
     async (input: Parameters<AuthState['register']>[0]) => {
-      applyAuth(await authApi.register(input));
+      await applyAuth(await authApi.register(input));
     },
     [applyAuth],
   );
