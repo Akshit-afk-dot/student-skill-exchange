@@ -51,6 +51,8 @@ services:
         sync: false
       - key: SMTP_PORT
         sync: false
+      - key: SMTP_SECURE
+        sync: false        # "true" for port 465; leave unset for STARTTLS on 587
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS
