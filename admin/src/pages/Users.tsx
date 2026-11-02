@@ -4,7 +4,7 @@ import {
   Badge,
   EmptyState,
   ErrorAlert,
-  Loading,
+  TableSkeleton,
   Modal,
   Pagination,
   StatusBadge,
@@ -90,7 +90,7 @@ export function UsersPage() {
 
       <div className="card">
         {loading ? (
-          <Loading />
+          <TableSkeleton rows={8} columns={6} />
         ) : !data || data.items.length === 0 ? (
           <EmptyState
             title="No students found"
@@ -106,9 +106,9 @@ export function UsersPage() {
                     <th>College</th>
                     <th>Status</th>
                     <th>Rating</th>
-                    <th>Sessions</th>
-                    <th>Points</th>
-                    <th>Joined</th>
+                    <th className="hide-md">Sessions</th>
+                    <th className="hide-md">Points</th>
+                    <th className="hide-md">Joined</th>
                     <th />
                   </tr>
                 </thead>
@@ -131,7 +131,7 @@ export function UsersPage() {
                         </div>
                       </td>
                       <td>
-                        {user.college ?? '—'}
+                        <span className="truncate" title={user.college ?? undefined}>{user.college ?? '—'}</span>
                         {user.department ? <div className="cell-sub">{user.department}</div> : null}
                       </td>
                       <td>
@@ -141,12 +141,12 @@ export function UsersPage() {
                         {user.ratingCount > 0 ? `${user.ratingAvg.toFixed(1)} ★` : '—'}
                         <div className="cell-sub">{plural(user.ratingCount, 'review')}</div>
                       </td>
-                      <td className="nowrap">
+                      <td className="nowrap hide-md">
                         {user.stats.sessionsTaught + user.stats.sessionsLearned}
                         <div className="cell-sub">{user.stats.sessionsTaught} taught</div>
                       </td>
-                      <td>{user.stats.points}</td>
-                      <td className="nowrap">{formatDate(user.createdAt)}</td>
+                      <td className="hide-md">{user.stats.points}</td>
+                      <td className="nowrap hide-md">{formatDate(user.createdAt)}</td>
                       <td className="text-right">
                         <button
                           className="btn btn-sm"
@@ -202,14 +202,14 @@ function ModerateModal({
   const [status, setStatus] = useState<'ACTIVE' | 'SUSPENDED' | 'BANNED'>(
     user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE',
   );
-  const [days, setDays] = useState(7);
+  const [days, setDays] = useState('7');
   const [reason, setReason] = useState('');
 
   const moderate = useMutation(async () =>
     api.post(`/admin/users/${user._id}/moderate`, {
       status,
       // Only meaningful for a suspension; the API ignores it otherwise.
-      ...(status === 'SUSPENDED' ? { suspendDays: days } : {}),
+      ...(status === 'SUSPENDED' ? { suspendDays: Math.min(365, Math.max(1, Number(days) || 1)) } : {}),
       ...(reason.trim() ? { reason: reason.trim() } : {}),
     }),
   );
@@ -267,7 +267,7 @@ function ModerateModal({
             min={1}
             max={365}
             value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
+            onChange={(e) => setDays(e.target.value)}
           />
         </div>
       ) : null}

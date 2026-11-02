@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 export function Spinner() {
   return <span className="spinner" role="status" aria-label="Loading" />;
@@ -35,13 +35,16 @@ export function Stat({
   label,
   value,
   hint,
+  tone = 'neutral',
 }: {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
+  /** `alert` marks a number that someone needs to act on. */
+  tone?: 'neutral' | 'alert';
 }) {
   return (
-    <div className="stat">
+    <div className={tone === 'alert' ? 'stat stat-alert' : 'stat'}>
       <div className="stat-label">{label}</div>
       <div className="stat-value">{value}</div>
       {hint ? <div className="stat-hint">{hint}</div> : null}
@@ -189,4 +192,51 @@ export function timeAgo(iso?: string): string {
 export function plural(count: number, singular: string, pluralForm?: string): string {
   const word = count === 1 ? singular : (pluralForm ?? `${singular}s`);
   return `${count} ${word}`;
+}
+
+/**
+ * Shimmer placeholders that match the shape of the content they stand in for. A spinner
+ * tells the user something is happening; a skeleton tells them what is coming.
+ */
+export function Skeleton({
+  className = '',
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return <span className={`skeleton ${className}`.trim()} style={style} aria-hidden="true" />;
+}
+
+export function StatsSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="grid grid-stats" role="status" aria-label="Loading">
+      {Array.from({ length: count }, (_, i) => (
+        <div className="stat" key={i}>
+          <Skeleton className="skeleton-line-sm" />
+          <Skeleton className="skeleton-line-lg" />
+          <Skeleton className="skeleton-line-xs" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function TableSkeleton({ rows = 8, columns }: { rows?: number; columns: number }) {
+  return (
+    <div className="table-skeleton" role="status" aria-label="Loading">
+      {Array.from({ length: rows }, (_, r) => (
+        <div className="table-skeleton-row" key={r}>
+          {Array.from({ length: columns }, (_, c) => (
+            // Varied widths so the placeholder reads as ragged text, not a grid.
+            <Skeleton
+              key={c}
+              className="skeleton-cell"
+              style={{ width: `${55 + ((r * 7 + c * 13) % 40)}%` }}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
 }

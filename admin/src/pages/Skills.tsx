@@ -3,7 +3,7 @@ import {
   Badge,
   EmptyState,
   ErrorAlert,
-  Loading,
+  TableSkeleton,
   Modal,
   Pagination,
   formatDate,
@@ -86,7 +86,7 @@ export function SkillsPage() {
 
       <div className="card">
         {loading ? (
-          <Loading />
+          <TableSkeleton rows={6} columns={5} />
         ) : !data || data.items.length === 0 ? (
           <EmptyState title="No skills found" hint="Try a different search or category." />
         ) : (

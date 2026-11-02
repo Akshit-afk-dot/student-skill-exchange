@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { EmptyState, ErrorAlert, Loading, Pagination, formatDateTime } from '../components/ui';
+import { EmptyState, ErrorAlert, Pagination, TableSkeleton, formatDateTime } from '../components/ui';
 import { useQuery } from '../hooks/useApi';
 import type { Paginated } from '../lib/api';
 import type { AuditEntry } from '../lib/types';
@@ -36,7 +36,7 @@ export function AuditLogPage() {
 
       <div className="card">
         {loading ? (
-          <Loading />
+          <TableSkeleton rows={6} columns={4} />
         ) : !data || data.items.length === 0 ? (
           <EmptyState title="No actions recorded yet" hint="Moderation activity will appear here." />
         ) : (

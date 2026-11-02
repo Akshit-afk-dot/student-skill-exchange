@@ -1,3 +1,6 @@
+import { useCallback, useRef, useState } from 'react';
+import { plural } from './ui';
+
 /**
  * Small hand-rolled SVG charts.
  *
@@ -11,13 +14,37 @@ export interface TrendPoint {
   signups: number;
 }
 
-export function TrendChart({ points, height = 160 }: { points: TrendPoint[]; height?: number }) {
+/**
+ * Reports the rendered width of the element it is attached to. The chart is drawn at that
+ * exact size, so its labels stay readable instead of shrinking with a scaled viewBox.
+ */
+function useMeasuredWidth(fallback: number) {
+  const [width, setWidth] = useState(fallback);
+  const observer = useRef<ResizeObserver | null>(null);
+
+  // A callback ref rather than an effect: the chart can mount with no data, render
+  // nothing, and only later get an element to measure.
+  const ref = useCallback((el: HTMLDivElement | null) => {
+    observer.current?.disconnect();
+    observer.current = null;
+    if (!el) return;
+    observer.current = new ResizeObserver(([entry]) => {
+      setWidth(Math.max(240, Math.round(entry.contentRect.width)));
+    });
+    observer.current.observe(el);
+  }, []);
+
+  return [ref, width] as const;
+}
+
+export function TrendChart({ points, height = 180 }: { points: TrendPoint[]; height?: number }) {
+  const [ref, width] = useMeasuredWidth(640);
+
   if (points.length === 0) {
     return <div className="empty">No signups in the last 30 days yet.</div>;
   }
 
-  const width = 640;
-  const padding = { top: 12, right: 12, bottom: 24, left: 30 };
+  const padding = { top: 12, right: 12, bottom: 24, left: 34 };
   const plotW = width - padding.left - padding.right;
   const plotH = height - padding.top - padding.bottom;
 
@@ -43,41 +70,48 @@ export function TrendChart({ points, height = 160 }: { points: TrendPoint[]; hei
   const labelEvery = Math.max(1, Math.ceil(points.length / 6));
 
   return (
-    <svg
-      className="chart"
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-      role="img"
-      aria-label={`Signups over the last ${points.length} days, peaking at ${max} in a day`}
-    >
-      <line
-        className="chart-axis"
-        x1={padding.left}
-        y1={padding.top + plotH}
-        x2={width - padding.right}
-        y2={padding.top + plotH}
-      />
-      <text className="chart-label" x={4} y={padding.top + 4}>
-        {max}
-      </text>
-      <text className="chart-label" x={4} y={padding.top + plotH + 4}>
-        0
-      </text>
+    <div className="chart-frame" ref={ref}>
+      <svg
+        className="chart"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={`Signups over the last ${points.length} days, peaking at ${max} in a day`}
+      >
+        <line
+          className="chart-axis"
+          x1={padding.left}
+          y1={padding.top + plotH}
+          x2={width - padding.right}
+          y2={padding.top + plotH}
+        />
+        <text className="chart-label" x={4} y={padding.top + 10}>
+          {max}
+        </text>
+        <text className="chart-label" x={4} y={padding.top + plotH}>
+          0
+        </text>
 
-      {area ? <path className="chart-area" d={area} /> : null}
-      <path className="chart-line" d={line} />
+        {area ? <path className="chart-area" d={area} /> : null}
+        <path className="chart-line" d={line} />
 
-      {coords.map((c, i) =>
-        i % labelEvery === 0 || i === coords.length - 1 ? (
+        {coords.map((c, i) => (
           <g key={c.date}>
-            <circle className="chart-dot" cx={c.x} cy={c.y} r={2.5} />
-            <text className="chart-label" x={c.x} y={height - 8} textAnchor="middle">
-              {c.date.slice(5)}
-            </text>
+            {/* A wider invisible target so every point can be hovered or tapped. */}
+            <circle className="chart-hit" cx={c.x} cy={c.y} r={9}>
+              <title>{`${c.date}: ${plural(c.signups, 'signup')}`}</title>
+            </circle>
+            {i % labelEvery === 0 || i === coords.length - 1 ? (
+              <>
+                <circle className="chart-dot" cx={c.x} cy={c.y} r={2.5} />
+                <text className="chart-label" x={c.x} y={height - 6} textAnchor="middle">
+                  {c.date.slice(5)}
+                </text>
+              </>
+            ) : null}
           </g>
-        ) : null,
-      )}
-    </svg>
+        ))}
+      </svg>
+    </div>
   );
 }
 

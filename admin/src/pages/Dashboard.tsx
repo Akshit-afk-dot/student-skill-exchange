@@ -1,25 +1,95 @@
+import { Link } from 'react-router-dom';
 import { BarList, TrendChart } from '../components/charts';
-import { ErrorAlert, Loading, Stat, plural } from '../components/ui';
+import { ErrorAlert, Stat, StatsSkeleton, plural } from '../components/ui';
 import { useQuery } from '../hooks/useApi';
+import { useAuth } from '../lib/auth';
 import type { DashboardStats } from '../lib/types';
 
 export function DashboardPage() {
-  const { data, error, loading } = useQuery<DashboardStats>('/admin/stats');
+  const { user } = useAuth();
+  const { data, error, loading, reload } = useQuery<DashboardStats>('/admin/stats');
 
-  if (loading) return <Loading label="Loading platform statistics…" />;
-  if (error) return <ErrorAlert message={error} />;
-  if (!data) return null;
+  const firstName = user?.name.split(' ')[0] ?? '';
+  // Rendered in every state so the heading never jumps when the data arrives.
+  const header = (
+    <div className="page-head">
+      <div>
+        <h1>Dashboard</h1>
+        <p>
+          {timeOfDayGreeting()}
+          {firstName ? `, ${firstName}` : ''}. Platform health at a glance.
+        </p>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <>
+        {header}
+        <StatsSkeleton count={4} />
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        {header}
+        <div className="card">
+          <div className="empty">
+            <ErrorAlert message={error} />
+            <button className="btn" onClick={reload}>
+              Try again
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (!data) return header;
 
   const { users, sessions, requests, community, skills } = data;
 
+  // Only the queues that have work in them. An empty dashboard should say nothing here.
+  const attention = [
+    {
+      key: 'reports',
+      label: 'Open reports',
+      count: community.openReports,
+      to: '/reports',
+      action: 'Review reports',
+    },
+    {
+      key: 'skills',
+      label: 'Skills awaiting approval',
+      count: skills.unapproved,
+      to: '/skills',
+      action: 'Review skills',
+    },
+  ].filter((item) => item.count > 0);
+
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Dashboard</h1>
-          <p>Platform health at a glance.</p>
-        </div>
-      </div>
+      {header}
+
+      {attention.length > 0 ? (
+        <section aria-label="Needs attention" className="mb-16">
+          <h2 className="mb-16">Needs attention</h2>
+          <div className="attention-grid">
+            {attention.map((item) => (
+              <Link key={item.key} to={item.to} className="attention-card">
+                <div>
+                  <div className="attention-label">{item.label}</div>
+                  <div className="attention-action">{item.action} →</div>
+                </div>
+                <div className="attention-count">{item.count}</div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section aria-label="Students" className="mb-16">
         <h2 className="mb-16">Students</h2>
@@ -91,6 +161,7 @@ export function DashboardPage() {
             label="Open reports"
             value={community.openReports}
             hint={community.openReports > 0 ? 'Needs moderator attention' : 'Queue is clear'}
+            tone={community.openReports > 0 ? 'alert' : 'neutral'}
           />
         </div>
       </section>
@@ -110,7 +181,7 @@ export function DashboardPage() {
             <h2>Skill catalogue</h2>
           </div>
           <div className="card-body">
-            <div className="grid grid-stats">
+            <div className="grid grid-3">
               <Stat label="Skills" value={skills.total} />
               <Stat label="Categories" value={skills.categories} />
               <Stat
@@ -145,4 +216,11 @@ export function DashboardPage() {
       </div>
     </>
   );
+}
+
+function timeOfDayGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
 }

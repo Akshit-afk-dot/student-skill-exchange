@@ -1,4 +1,5 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { Icon, type IconName } from './components/icons';
 import { Loading } from './components/ui';
 import { useQuery } from './hooks/useApi';
 import { useAuth } from './lib/auth';
@@ -51,11 +52,13 @@ function Sidebar() {
         <span>Skill Exchange</span>
       </div>
 
-      <NavItem to="/" label="Dashboard" />
-      <NavItem to="/users" label="Students" />
-      <NavItem to="/reports" label="Reports" count={openReports} />
-      <NavItem to="/skills" label="Skills" count={pendingSkills} />
-      <NavItem to="/audit-log" label="Audit log" />
+      <div className="sidebar-links">
+        <NavItem to="/" label="Dashboard" icon="dashboard" />
+        <NavItem to="/users" label="Students" icon="users" />
+        <NavItem to="/reports" label="Reports" icon="flag" count={openReports} />
+        <NavItem to="/skills" label="Skills" icon="sparkles" count={pendingSkills} />
+        <NavItem to="/audit-log" label="Audit log" icon="log" />
+      </div>
 
       <div className="sidebar-footer">
         <div style={{ marginBottom: 8 }}>
@@ -70,10 +73,23 @@ function Sidebar() {
   );
 }
 
-function NavItem({ to, label, count }: { to: string; label: string; count?: number }) {
+function NavItem({
+  to,
+  label,
+  icon,
+  count,
+}: {
+  to: string;
+  label: string;
+  icon: IconName;
+  count?: number;
+}) {
   return (
     <NavLink to={to} end={to === '/'} className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-      <span>{label}</span>
+      <span className="nav-label">
+        <Icon name={icon} />
+        {label}
+      </span>
       {count && count > 0 ? <span className="badge badge-danger">{count}</span> : null}
     </NavLink>
   );

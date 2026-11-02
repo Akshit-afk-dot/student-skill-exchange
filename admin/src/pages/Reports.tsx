@@ -4,7 +4,7 @@ import {
   Badge,
   EmptyState,
   ErrorAlert,
-  Loading,
+  TableSkeleton,
   Modal,
   Pagination,
   StatusBadge,
@@ -80,7 +80,7 @@ export function ReportsPage() {
 
       <div className="card">
         {loading ? (
-          <Loading />
+          <TableSkeleton rows={6} columns={5} />
         ) : !data || data.items.length === 0 ? (
           <EmptyState
             title="Nothing in the queue"
