@@ -77,7 +77,8 @@ roughly 30 seconds to wake it. For a live viva, hit the URL a minute beforehand.
 
 ### Railway / Fly / anything else
 
-- Build: `npm ci && npm run build`
+- Build: `npm ci --include=dev && npm run build`. The `--include=dev` matters: with
+  `NODE_ENV=production` set, a plain `npm ci` skips TypeScript and the build fails.
 - Start: `npm start`
 - Health check path: `/health`
 - Root directory: `server`

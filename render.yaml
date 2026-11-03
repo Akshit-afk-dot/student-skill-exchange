@@ -9,7 +9,9 @@ services:
     runtime: node
     plan: free
     rootDir: server
-    buildCommand: npm ci && npm run build
+    # NODE_ENV=production (below) also applies to the build, which makes npm ci skip
+    # devDependencies such as TypeScript. --include=dev keeps the pinned compiler.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /health
     envVars:
