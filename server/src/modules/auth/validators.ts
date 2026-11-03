@@ -21,6 +21,9 @@ export const registerSchema = z.object({
   college: z.string().trim().max(140).optional(),
   department: z.string().trim().max(140).optional(),
   year: z.coerce.number().int().min(1).max(8).optional(),
+  // Recorded when the app sends it. Optional so older app builds can still register;
+  // the sign-up screen itself will not submit without the box ticked.
+  acceptTerms: z.boolean().optional(),
 });
 
 export const loginSchema = z.object({

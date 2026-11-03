@@ -68,3 +68,8 @@ export const objectIdParam = z.object({
 
 export type SearchUsersInput = z.infer<typeof searchUsersSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+export const deleteAccountSchema = z.object({
+  // Optional because a Google-only account has no password to give.
+  password: z.string().max(200).optional(),
+});

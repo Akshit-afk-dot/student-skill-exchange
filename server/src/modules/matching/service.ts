@@ -10,6 +10,7 @@ import {
 } from '../../models';
 import { ApiError } from '../../utils/errors';
 import { paginate, type Paginated } from '../../utils/pagination';
+import { blockedEitherWay } from '../blocks/service';
 import { publicUser, type PublicUser } from '../users/serializer';
 import {
   computeMatchScore,
@@ -159,6 +160,8 @@ export async function getRecommendations(
     excluded.add(String(r.sender));
     excluded.add(String(r.receiver));
   }
+  // A block in either direction removes the pair from each other's recommendations.
+  for (const id of await blockedEitherWay(userId)) excluded.add(String(id));
 
   const candidateIds = candidateRows
     .map((row) => row._id)

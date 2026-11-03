@@ -1,4 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import { emailVerificationRequired } from '../config/features';
 import { User, type UserDoc } from '../models';
 import { verifyAccessToken } from '../modules/auth/tokens';
 import type { UserRole } from '../types/domain';
@@ -90,3 +91,24 @@ export function currentUserId(req: Request): string {
   if (!req.userId) throw ApiError.unauthorized();
   return req.userId;
 }
+
+/**
+ * Requires a verified email for the actions that reach other students: sending a
+ * learning request or a chat message. Everything else, including browsing and editing a
+ * profile, stays open, so an unverified student can still look around.
+ *
+ * Only enforced once email delivery is configured (see `emailVerificationRequired`),
+ * since otherwise no verification email could ever arrive. Admins are exempt.
+ */
+export const requireVerifiedEmail: RequestHandler = (req, _res, next) => {
+  const user = req.user;
+  if (!user) return next(ApiError.unauthorized());
+  if (user.emailVerified || user.role === 'ADMIN' || !emailVerificationRequired()) return next();
+  next(
+    new ApiError(
+      403,
+      'EMAIL_NOT_VERIFIED',
+      'Verify your email address to send requests and messages. We sent you a link; you can send a new one from Settings.',
+    ),
+  );
+};

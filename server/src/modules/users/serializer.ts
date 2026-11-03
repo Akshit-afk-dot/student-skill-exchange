@@ -30,6 +30,8 @@ export interface PublicUser {
   };
   badges: string[];
   isOnline: boolean;
+  /** True once the student has confirmed their email address. */
+  verified: boolean;
   lastSeenAt?: string;
   createdAt: string;
 }
@@ -58,6 +60,7 @@ export function publicUser(user: UserLike): PublicUser {
     },
     badges: user.badges ?? [],
     isOnline: user.isOnline ?? false,
+    verified: user.emailVerified === true,
     createdAt: new Date(user.createdAt).toISOString(),
   };
 

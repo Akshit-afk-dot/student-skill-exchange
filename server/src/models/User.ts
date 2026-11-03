@@ -62,6 +62,8 @@ export interface IUser {
   badges: Badge[];
 
   emailVerified: boolean;
+  /** When the student agreed to the terms and privacy policy at sign-up. */
+  termsAcceptedAt?: Date;
   emailVerificationTokenHash?: string;
   emailVerificationExpires?: Date;
   passwordResetTokenHash?: string;
@@ -163,6 +165,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     badges: { type: [String], enum: BADGES, default: [] },
 
     emailVerified: { type: Boolean, default: false },
+    termsAcceptedAt: { type: Date },
     emailVerificationTokenHash: { type: String, select: false },
     emailVerificationExpires: { type: Date, select: false },
     passwordResetTokenHash: { type: String, select: false },

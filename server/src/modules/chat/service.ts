@@ -11,6 +11,7 @@ import {
 import { RT, emitToUser } from '../../realtime/bus';
 import type { MessageType } from '../../types/domain';
 import { ApiError } from '../../utils/errors';
+import { blockedByUser } from '../blocks/service';
 import { paginate, type Paginated } from '../../utils/pagination';
 import { notify } from '../notifications/service';
 
@@ -56,7 +57,10 @@ export async function listConversations(
   page: number,
   limit: number,
 ): Promise<Paginated<ConversationView>> {
-  const filter = { participants: new Types.ObjectId(userId) };
+  // Conversations with students the caller blocked drop out of their list. The other
+  // side keeps theirs, but its inactive connection already stops any new message.
+  const hidden = await blockedByUser(userId);
+  const filter = { participants: { $all: [new Types.ObjectId(userId)], $nin: hidden } };
   const skip = (page - 1) * limit;
 
   const [rows, total] = await Promise.all([

@@ -1,6 +1,7 @@
 import mongoose, { type PipelineStage, Types } from 'mongoose';
 import { Review, Skill, User, UserSkill, type IUser, type UserDoc } from '../../models';
 import { ApiError } from '../../utils/errors';
+import { blockedEitherWay } from '../blocks/service';
 import { paginate, type Paginated } from '../../utils/pagination';
 import { publicUser, type PublicUser } from './serializer';
 import type { SearchUsersInput, UpdateProfileInput } from './validators';
@@ -136,7 +137,10 @@ export async function searchUsers(
   input: SearchUsersInput,
 ): Promise<Paginated<SearchResultUser>> {
   const userMatch: Record<string, unknown> = { status: 'ACTIVE', role: 'STUDENT' };
-  if (viewerId) userMatch._id = { $ne: new Types.ObjectId(viewerId) };
+  if (viewerId) {
+    // Neither the viewer nor anyone on either side of a block with them.
+    userMatch._id = { $nin: [new Types.ObjectId(viewerId), ...(await blockedEitherWay(viewerId))] };
+  }
   if (input.college) userMatch.college = new RegExp(`^${escapeRegex(input.college)}$`, 'i');
   if (input.language) userMatch.languages = input.language;
   if (input.minRating !== undefined) userMatch.ratingAvg = { $gte: input.minRating };

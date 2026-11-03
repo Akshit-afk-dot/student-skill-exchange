@@ -9,6 +9,7 @@ import { env, isProd, isTest, storageDriver } from './config/env';
 import { logger } from './config/logger';
 import { errorHandler, globalLimiter, notFoundHandler } from './middleware';
 import { ApiError } from './utils/errors';
+import { pagesRouter } from './modules/pages/router';
 import { apiRouter } from './routes';
 
 /**
@@ -105,6 +106,9 @@ export function createApp(): Express {
   }
 
   app.use('/api/v1', apiRouter);
+  // Legal pages and web account deletion: linked from the stores, so they live at stable
+  // top-level URLs rather than under the versioned API.
+  app.use(pagesRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -56,6 +56,7 @@ export async function register(input: RegisterInput, ctx: RequestContext): Promi
     year: input.year,
     emailVerificationTokenHash: hash,
     emailVerificationExpires: new Date(Date.now() + VERIFICATION_TTL_MS),
+    ...(input.acceptTerms ? { termsAcceptedAt: new Date() } : {}),
   });
 
   // Awaited but non-fatal: `sendMail` swallows transport errors internally.

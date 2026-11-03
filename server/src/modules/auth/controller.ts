@@ -8,7 +8,10 @@ import {
   validate,
   validatedQuery,
 } from '../../middleware';
+import { env } from '../../config/env';
 import { asyncHandler } from '../../utils/async';
+import { ApiError } from '../../utils/errors';
+import { escapeHtml, renderPage } from '../../utils/html';
 import { selfUser } from '../users/serializer';
 import { registerPushToken, unregisterPushToken } from '../notifications/push';
 import * as service from './service';
@@ -139,14 +142,38 @@ authRouter.get(
   validate({ query: verifyEmailSchema }),
   asyncHandler(async (req, res) => {
     const { token } = validatedQuery<{ token: string }>(req);
-    await service.verifyEmail(token);
+    try {
+      await service.verifyEmail(token);
+    } catch (err) {
+      // An expired or reused link is opened in a browser, so it gets a page, not JSON.
+      if (!(err instanceof ApiError)) throw err;
+      res
+        .status(err.status)
+        .type('html')
+        .send(
+          renderPage(
+            'Link not valid',
+            `<h1>This link didn't work</h1>
+             <p>${escapeHtml(err.message)}. If you already verified your email, you're all set.</p>
+             <p>Otherwise, open the app and choose <strong>Settings → Resend verification email</strong> for a new link.</p>`,
+            env.APP_NAME,
+          ),
+        );
+      return;
+    }
     res
       .status(200)
       .type('html')
       .send(
-        '<!doctype html><meta charset="utf-8"><title>Email verified</title>' +
-          '<body style="font-family:system-ui;padding:40px;text-align:center">' +
-          '<h1>Email verified</h1><p>You can close this tab and return to the app.</p></body>',
+        renderPage(
+          'Email verified',
+          // skillexchange:// is the app's URL scheme (app.json "scheme").
+          `<h1>Your email is verified</h1>
+           <p>Thanks. Your account is fully set up, and you can now send learning requests and messages.</p>
+           <p><a class="button" href="skillexchange://">Open the app</a></p>
+           <p class="muted">If the button does nothing, just switch back to the app.</p>`,
+          env.APP_NAME,
+        ),
       );
   }),
 );

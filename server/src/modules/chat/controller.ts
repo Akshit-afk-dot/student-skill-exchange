@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { currentUserId, requireAuth, validate, validatedQuery, writeLimiter } from '../../middleware';
+import {
+  currentUserId,
+  requireAuth,
+  requireVerifiedEmail,
+  validate,
+  validatedQuery,
+  writeLimiter,
+} from '../../middleware';
 import { asyncHandler } from '../../utils/async';
 import { objectIdParam } from '../users/validators';
 import * as service from './service';
@@ -73,6 +80,7 @@ chatRouter.get(
 chatRouter.post(
   '/:id/messages',
   requireAuth,
+  requireVerifiedEmail,
   writeLimiter,
   validate({ params: objectIdParam, body: sendMessageSchema }),
   asyncHandler(async (req, res) => {

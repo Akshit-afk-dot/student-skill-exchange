@@ -24,3 +24,5 @@ export { RefreshToken } from './RefreshToken';
 export type { IRefreshToken, RefreshTokenDoc } from './RefreshToken';
 export { AuditLog } from './AuditLog';
 export type { IAuditLog, AuditLogDoc } from './AuditLog';
+export { Block } from './Block';
+export type { IBlock, BlockDoc } from './Block';

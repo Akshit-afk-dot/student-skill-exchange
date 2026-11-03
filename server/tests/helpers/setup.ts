@@ -9,3 +9,6 @@ process.env.ENABLE_JOBS = 'false';
 process.env.LOG_LEVEL = 'silent';
 // bcrypt at 12 rounds costs ~250ms per hash; the tests do not need that margin.
 process.env.BCRYPT_ROUNDS = '8';
+// Tests never send real email, whatever server/.env says. This also keeps the email
+// verification requirement (which follows SMTP) off unless a test switches it on.
+process.env.SMTP_HOST = '';

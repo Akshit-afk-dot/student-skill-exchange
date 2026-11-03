@@ -12,6 +12,7 @@ import {
 import { RT, emitToUser } from '../../realtime/bus';
 import type { RequestStatus } from '../../types/domain';
 import { ApiError } from '../../utils/errors';
+import { isBlockedBetween } from '../blocks/service';
 import { paginate, type Paginated } from '../../utils/pagination';
 import { notify } from '../notifications/service';
 
@@ -34,6 +35,10 @@ export async function createRequest(
 ): Promise<LearningRequestDoc> {
   if (senderId === input.receiverId) {
     throw ApiError.badRequest('You cannot send a learning request to yourself');
+  }
+  // Deliberately the same wording whichever side blocked: it must not reveal who did.
+  if (await isBlockedBetween(senderId, input.receiverId)) {
+    throw ApiError.forbidden('You cannot send a request to this student');
   }
 
   const [receiver, skill] = await Promise.all([

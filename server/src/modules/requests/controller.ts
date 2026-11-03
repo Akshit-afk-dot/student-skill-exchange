@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { currentUserId, requireAuth, validate, validatedQuery, writeLimiter } from '../../middleware';
+import {
+  currentUserId,
+  requireAuth,
+  requireVerifiedEmail,
+  validate,
+  validatedQuery,
+  writeLimiter,
+} from '../../middleware';
 import { REQUEST_STATUSES } from '../../types/domain';
 import { asyncHandler } from '../../utils/async';
 import { objectIdParam } from '../users/validators';
@@ -28,6 +35,7 @@ export const requestsRouter = Router();
 requestsRouter.post(
   '/',
   requireAuth,
+  requireVerifiedEmail,
   writeLimiter,
   validate({ body: createRequestSchema }),
   asyncHandler(async (req, res) => {

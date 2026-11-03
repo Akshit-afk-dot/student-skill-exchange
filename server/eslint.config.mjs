@@ -57,8 +57,8 @@ export default tseslint.config(
   },
 
   {
-    // The seeder prints demo credentials to stdout; that is its job.
-    files: ['src/seed/**/*.ts'],
+    // The seeder prints demo credentials, and scripts report what they did; that is their job.
+    files: ['src/seed/**/*.ts', 'src/scripts/**/*.ts'],
     rules: { 'no-console': 'off' },
   },
 );

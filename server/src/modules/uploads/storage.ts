@@ -121,3 +121,17 @@ export async function deleteFile(key: string): Promise<void> {
     logger.debug({ err, key }, 'File delete failed (ignored)');
   }
 }
+
+/**
+ * Recovers the storage key from a public URL this server issued, so a file can be
+ * deleted when only its URL was saved (profile photos, chat attachments). Returns null
+ * for anything else, which callers treat as "nothing of ours to delete".
+ */
+export function keyFromUrl(url: string): string | null {
+  const localPrefix = `${env.PUBLIC_URL}/uploads/`;
+  if (url.startsWith(localPrefix)) return url.slice(localPrefix.length);
+
+  // Cloudinary: https://res.cloudinary.com/<cloud>/<type>/upload/v<version>/<public_id>.<ext>
+  const cloudinary = /\/upload\/(?:v\d+\/)?(student-skill-exchange\/[^?#]+?)(?:\.[a-z0-9]+)?$/i.exec(url);
+  return cloudinary?.[1] ?? null;
+}
