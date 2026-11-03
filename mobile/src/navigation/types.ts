@@ -42,6 +42,8 @@ export type RootStackParamList = {
 
   Notifications: undefined;
   Settings: undefined;
+  BlockedUsers: undefined;
+  DeleteAccount: undefined;
   ReportUser: { userId: string; userName: string };
 };
 

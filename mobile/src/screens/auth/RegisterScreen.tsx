@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
@@ -6,6 +7,7 @@ import { Banner, Body, Button, Caption, Field, Input, Row, Screen, Title } from 
 import { useAction } from '../../hooks/useAsync';
 import { useAuth } from '../../store/auth';
 import { useTheme } from '../../theme';
+import { LEGAL_URLS, openPage } from '../../utils/legal';
 import type { AuthStackParamList } from '../../navigation/types';
 
 const YEARS = [1, 2, 3, 4, 5];
@@ -21,6 +23,7 @@ export function RegisterScreen() {
   const [college, setCollege] = useState('');
   const [department, setDepartment] = useState('');
   const [year, setYear] = useState<number | null>(null);
+  const [accepted, setAccepted] = useState(false);
 
   const submit = useAction(async () =>
     register({
@@ -30,10 +33,12 @@ export function RegisterScreen() {
       ...(college.trim() ? { college: college.trim() } : {}),
       ...(department.trim() ? { department: department.trim() } : {}),
       ...(year ? { year } : {}),
+      acceptTerms: true,
     }),
   );
 
-  const canSubmit = name.trim().length >= 2 && email.includes('@') && password.length >= 8;
+  const canSubmit =
+    name.trim().length >= 2 && email.includes('@') && password.length >= 8 && accepted;
 
   return (
     <Screen scroll>
@@ -137,6 +142,41 @@ export function RegisterScreen() {
             })}
           </Row>
         </Field>
+
+        <Row gap={t.spacing.md} style={{ alignItems: 'flex-start', marginBottom: t.spacing.lg }}>
+          <Pressable
+            onPress={() => setAccepted((value) => !value)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: accepted }}
+            accessibilityLabel="I am 18 or older and agree to the terms of use and privacy policy"
+            hitSlop={10}
+          >
+            <Ionicons
+              name={accepted ? 'checkbox' : 'square-outline'}
+              size={24}
+              color={accepted ? t.colors.primary : t.colors.textMuted}
+            />
+          </Pressable>
+          <Text style={{ flex: 1, color: t.colors.text, fontSize: 14, lineHeight: 20 }}>
+            I am 18 or older and agree to the{' '}
+            <Text
+              onPress={() => openPage(LEGAL_URLS.terms)}
+              accessibilityRole="link"
+              style={{ color: t.colors.primary, fontWeight: '600' }}
+            >
+              Terms of use
+            </Text>{' '}
+            and{' '}
+            <Text
+              onPress={() => openPage(LEGAL_URLS.privacy)}
+              accessibilityRole="link"
+              style={{ color: t.colors.primary, fontWeight: '600' }}
+            >
+              Privacy policy
+            </Text>
+            . There is no tolerance for abusive behaviour or objectionable content.
+          </Text>
+        </Row>
 
         <Button
           label="Create account"

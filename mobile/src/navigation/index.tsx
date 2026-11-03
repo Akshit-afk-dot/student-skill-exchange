@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { chat, requests } from '../api/endpoints';
 import { RT, onEvent } from '../api/socket';
 import { Caption, LoadingView } from '../components/ui';
@@ -40,6 +41,8 @@ import { ScheduleSessionScreen } from '../screens/ScheduleSessionScreen';
 import { SearchResultsScreen } from '../screens/SearchResultsScreen';
 import { SendRequestScreen } from '../screens/SendRequestScreen';
 import { SessionDetailsScreen } from '../screens/SessionDetailsScreen';
+import { BlockedUsersScreen } from '../screens/BlockedUsersScreen';
+import { DeleteAccountScreen } from '../screens/DeleteAccountScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { StudentProfileScreen } from '../screens/StudentProfileScreen';
 import { WriteReviewScreen } from '../screens/WriteReviewScreen';
@@ -154,6 +157,8 @@ function TabNavigator() {
     };
   }, []);
 
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs.Navigator
       screenOptions={({ route }) => ({
@@ -163,6 +168,11 @@ function TabNavigator() {
         tabBarStyle: {
           backgroundColor: t.colors.surface,
           borderTopColor: t.colors.border,
+          // The default height leaves the label almost no room under the larger active
+          // icon on phones without a gesture bar, so it is set explicitly.
+          height: 60 + insets.bottom,
+          paddingTop: 6,
+          paddingBottom: 6 + insets.bottom,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarIcon: ({ focused, color, size }) => {
@@ -288,6 +298,16 @@ function RootNavigator() {
         options={{ title: 'Notifications' }}
       />
       <RootStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+      <RootStack.Screen
+        name="BlockedUsers"
+        component={BlockedUsersScreen}
+        options={{ title: 'Blocked students' }}
+      />
+      <RootStack.Screen
+        name="DeleteAccount"
+        component={DeleteAccountScreen}
+        options={{ title: 'Delete account' }}
+      />
       <RootStack.Screen
         name="ReportUser"
         component={ReportUserScreen}

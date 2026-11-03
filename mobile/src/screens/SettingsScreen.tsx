@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Constants from 'expo-constants';
 import { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 import { BASE_URL } from '../api/client';
@@ -22,7 +23,42 @@ import {
 import { useAction } from '../hooks/useAsync';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
+import { LEGAL_URLS, contactSupport, openPage } from '../utils/legal';
 import type { RootStackParamList } from '../navigation/types';
+
+/** One tappable line in a settings card. */
+function SettingsRow({
+  label,
+  icon,
+  onPress,
+  external = false,
+}: {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  external?: boolean;
+}) {
+  const t = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole={external ? 'link' : 'button'}
+      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+    >
+      <Row style={{ justifyContent: 'space-between' }}>
+        <Row gap={t.spacing.md} style={{ flex: 1 }}>
+          <Ionicons name={icon} size={18} color={t.colors.textMuted} />
+          <Body>{label}</Body>
+        </Row>
+        <Ionicons
+          name={external ? 'open-outline' : 'chevron-forward'}
+          size={17}
+          color={t.colors.textMuted}
+        />
+      </Row>
+    </Pressable>
+  );
+}
 
 export function SettingsScreen() {
   const t = useTheme();
@@ -45,7 +81,7 @@ export function SettingsScreen() {
 
   const resendVerification = useAction(async () => {
     await authApi.resendVerification();
-    setNotice('Verification email sent. Check your inbox.');
+    setNotice('Verification email sent. Check your inbox, and your spam folder if it is not there.');
     return true;
   });
 
@@ -72,7 +108,12 @@ export function SettingsScreen() {
             <Body numberOfLines={1}>{user?.email}</Body>
           </View>
           {user?.emailVerified ? (
-            <Ionicons name="checkmark-circle" size={20} color={t.colors.success} />
+            <Ionicons
+              name="checkmark-circle"
+              size={20}
+              color={t.colors.success}
+              accessibilityLabel="Email verified"
+            />
           ) : null}
         </Row>
 
@@ -80,7 +121,8 @@ export function SettingsScreen() {
           <>
             <Divider />
             <Body small muted style={{ marginBottom: t.spacing.sm }}>
-              Your email is not verified yet.
+              Your email is not verified yet. You need to verify it before you can send requests
+              and messages.
             </Body>
             <Button
               label="Resend verification email"
@@ -94,16 +136,11 @@ export function SettingsScreen() {
 
         <Divider />
 
-        <Pressable
+        <SettingsRow
+          label="Edit profile"
+          icon="person-outline"
           onPress={() => navigation.navigate('EditProfile')}
-          accessibilityRole="button"
-          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-        >
-          <Row style={{ justifyContent: 'space-between' }}>
-            <Body>Edit profile</Body>
-            <Ionicons name="chevron-forward" size={17} color={t.colors.textMuted} />
-          </Row>
-        </Pressable>
+        />
       </Card>
 
       <SectionHeader title="Security" />
@@ -172,27 +209,57 @@ export function SettingsScreen() {
 
       <SectionHeader title="Safety" />
       <Card style={{ marginBottom: t.spacing.xl }}>
-        <Body small muted>
-          If another student behaves badly, report them from their profile. Reports go to
+        <Body small muted style={{ marginBottom: t.spacing.md }}>
+          If another student behaves badly, report or block them from their profile. Reports go to
           the moderation team, and we act on harassment, spam and fake profiles.
         </Body>
+        <Divider />
+        <SettingsRow
+          label="Blocked students"
+          icon="ban-outline"
+          onPress={() => navigation.navigate('BlockedUsers')}
+        />
       </Card>
 
       <SectionHeader title="About" />
-      <Card style={{ marginBottom: t.spacing.xl }}>
+      <Card style={{ marginBottom: t.spacing.xl, gap: t.spacing.md }}>
+        <SettingsRow
+          label="Privacy policy"
+          icon="shield-outline"
+          external
+          onPress={() => openPage(LEGAL_URLS.privacy)}
+        />
+        <SettingsRow
+          label="Terms of use"
+          icon="document-text-outline"
+          external
+          onPress={() => openPage(LEGAL_URLS.terms)}
+        />
+        <SettingsRow label="Contact support" icon="mail-outline" external onPress={contactSupport} />
+        <Divider />
         <Row style={{ justifyContent: 'space-between' }}>
           <Caption>Version</Caption>
-          <Caption>1.0.0</Caption>
+          <Caption>{Constants.expoConfig?.version ?? '1.0.0'}</Caption>
         </Row>
-        <Row style={{ justifyContent: 'space-between', marginTop: 6 }}>
-          <Caption>Server</Caption>
-          <Caption numberOfLines={1} style={{ maxWidth: '65%' }}>
-            {BASE_URL}
-          </Caption>
-        </Row>
+        {__DEV__ ? (
+          <Row style={{ justifyContent: 'space-between' }}>
+            <Caption>Server</Caption>
+            <Caption numberOfLines={1} style={{ maxWidth: '65%' }}>
+              {BASE_URL}
+            </Caption>
+          </Row>
+        ) : null}
       </Card>
 
       <Button label="Sign out" variant="danger" icon="log-out-outline" onPress={confirmSignOut} />
+      <View style={{ marginTop: t.spacing.md }}>
+        <Button
+          label="Delete account"
+          variant="ghost"
+          icon="trash-outline"
+          onPress={() => navigation.navigate('DeleteAccount')}
+        />
+      </View>
       <View style={{ height: t.spacing.xl }} />
     </Screen>
   );

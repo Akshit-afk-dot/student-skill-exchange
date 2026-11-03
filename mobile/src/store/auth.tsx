@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { AppState } from 'react-native';
 import {
   clearTokens,
   getRefreshToken,
@@ -31,6 +32,7 @@ interface AuthState {
     college?: string;
     department?: string;
     year?: number;
+    acceptTerms?: boolean;
   }): Promise<void>;
   signOut(): Promise<void>;
   refreshUser(): Promise<void>;
@@ -135,6 +137,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Leave the cached user in place; a transient failure should not blank the UI.
     }
   }, []);
+
+  // Coming back to the app is usually when a student has just tapped the link in their
+  // verification email, so pick up the new state rather than keep a stale banner.
+  const signedIn = user !== null;
+  useEffect(() => {
+    if (!signedIn) return;
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void refreshUser();
+    });
+    return () => subscription.remove();
+  }, [signedIn, refreshUser]);
 
   const value = useMemo<AuthState>(
     () => ({

@@ -19,6 +19,7 @@ import {
 } from '../components/ui';
 import { useAction, useAsync } from '../hooks/useAsync';
 import { useTheme } from '../theme';
+import { offerEmailVerification } from '../utils/verification';
 import type { RootStackParamList } from '../navigation/types';
 
 /**
@@ -69,12 +70,17 @@ export function SendRequestScreen() {
 
   const submit = useAction(async () => {
     if (!wantSkillId) return null;
-    await requests.create({
-      receiverId: userId,
-      skillId: wantSkillId,
-      ...(offerSkillId ? { offeredSkillId: offerSkillId } : {}),
-      message: message.trim(),
-    });
+    try {
+      await requests.create({
+        receiverId: userId,
+        skillId: wantSkillId,
+        ...(offerSkillId ? { offeredSkillId: offerSkillId } : {}),
+        message: message.trim(),
+      });
+    } catch (err) {
+      offerEmailVerification(err);
+      throw err;
+    }
     navigation.navigate('LearningRequests');
     return true;
   });

@@ -18,6 +18,7 @@ import { haptics } from '../utils/haptics';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
 import { chatTimestamp } from '../utils/format';
+import { offerEmailVerification } from '../utils/verification';
 import type { ChatMessage } from '../types';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -115,6 +116,7 @@ export function ChatScreen() {
       setMessages((prev) => (prev.some((m) => m._id === message._id) ? prev : [message, ...prev]));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Message could not be sent');
+      offerEmailVerification(err);
       // Give the text back rather than losing what they typed.
       setDraft(body);
     } finally {

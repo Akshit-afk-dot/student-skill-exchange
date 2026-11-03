@@ -37,6 +37,8 @@ export interface PublicUser {
   stats: { sessionsTaught: number; sessionsLearned: number; points: number; streakDays: number };
   badges: string[];
   isOnline: boolean;
+  /** Has confirmed their email address. */
+  verified?: boolean;
   lastSeenAt?: string;
   createdAt: string;
 }
@@ -104,6 +106,16 @@ export interface ProfileDetail extends PublicUser {
   teaches: UserSkillSummary[];
   learns: UserSkillSummary[];
   reviewSummary: { count: number; average: number; distribution: Record<string, number> };
+  /** Present when viewing someone else's profile while signed in. */
+  blockedByMe?: boolean;
+}
+
+export interface BlockedStudent {
+  id: string;
+  name: string;
+  college?: string;
+  profileImage?: string;
+  blockedAt: string;
 }
 
 export type MatchReasonCode =

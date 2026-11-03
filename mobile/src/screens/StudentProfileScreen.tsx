@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback } from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { connections, matching, users as usersApi } from '../api/endpoints';
 import {
   Avatar,
@@ -21,13 +21,15 @@ import {
   SectionHeader,
   StarRating,
   Title,
+  VerifiedName,
 } from '../components/ui';
 import { ScoreRing, ScoreBar } from '../components/ScoreRing';
 import { FadeInView } from '../components/motion';
-import { useAsync } from '../hooks/useAsync';
+import { useAction, useAsync } from '../hooks/useAsync';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
 import { LEVEL_LABEL, plural, reasonText, slotLabel } from '../utils/format';
+import { haptics } from '../utils/haptics';
 import type { RootStackParamList } from '../navigation/types';
 
 export function StudentProfileScreen() {
@@ -51,12 +53,35 @@ export function StudentProfileScreen() {
 
   const state = useAsync(load, [userId]);
 
+  const setBlocked = useAction(async (blocked: boolean) => {
+    if (blocked) {
+      await usersApi.block(userId);
+      haptics.warn();
+    } else {
+      await usersApi.unblock(userId);
+      haptics.success();
+    }
+    state.reload();
+    return true;
+  });
+
   if (state.loading) return <LoadingView />;
   if (state.error || !state.data) {
     return <ErrorView message={state.error ?? 'Profile not found'} onRetry={state.reload} />;
   }
 
   const [profile, connection, match] = state.data;
+
+  function confirmBlock() {
+    Alert.alert(
+      `Block ${profile.name}?`,
+      'You will not see each other in matches or search, and neither of you can send requests or messages. Any connection between you ends. We do not tell them.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Block', style: 'destructive', onPress: () => void setBlocked.run(true) },
+      ],
+    );
+  }
 
   const skillNames = new Map<string, string>();
   for (const s of match?.theyTeachYouWant ?? []) skillNames.set(s.id, s.name);
@@ -67,7 +92,7 @@ export function StudentProfileScreen() {
       <Row gap={t.spacing.lg} style={{ alignItems: 'flex-start' }}>
         <Avatar name={profile.name} uri={profile.profileImage} size={72} online={profile.isOnline} />
         <View style={{ flex: 1 }}>
-          <Title numberOfLines={2}>{profile.name}</Title>
+          <VerifiedName name={profile.name} verified={profile.verified} size="title" />
           {profile.college ? (
             <Body muted style={{ marginTop: 2 }}>
               {profile.college}
@@ -247,7 +272,22 @@ export function StudentProfileScreen() {
       {!isSelf ? (
         <View style={{ marginTop: t.spacing.xxl, gap: t.spacing.md }}>
           <Divider />
-          {connection.connected && connection.conversationId ? (
+          {setBlocked.error ? <Banner tone="danger" text={setBlocked.error} /> : null}
+          {profile.blockedByMe ? (
+            <>
+              <Banner
+                tone="warning"
+                text={`You have blocked ${profile.name}. You cannot find, request or message each other.`}
+              />
+              <Button
+                label="Unblock"
+                variant="secondary"
+                icon="checkmark-circle-outline"
+                onPress={() => void setBlocked.run(false)}
+                loading={setBlocked.pending}
+              />
+            </>
+          ) : connection.connected && connection.conversationId ? (
             <>
               <Button
                 label="Open chat"
@@ -293,6 +333,15 @@ export function StudentProfileScreen() {
               navigation.navigate('ReportUser', { userId: profile.id, userName: profile.name })
             }
           />
+          {!profile.blockedByMe ? (
+            <Button
+              label="Block this student"
+              variant="ghost"
+              icon="ban-outline"
+              onPress={confirmBlock}
+              loading={setBlocked.pending}
+            />
+          ) : null}
         </View>
       ) : (
         <Banner tone="primary" text="This is how other students see your profile." />

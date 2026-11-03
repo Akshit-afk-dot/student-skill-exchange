@@ -11,6 +11,7 @@ import {
   Overline,
   Row,
   StarRating,
+  VerifiedName,
 } from './ui';
 import { AnimatedListItem, PressableScale } from './motion';
 import { ScoreRing } from './ScoreRing';
@@ -47,7 +48,7 @@ export function StudentCard({
         <Row gap={t.spacing.md} style={{ alignItems: 'flex-start' }}>
           <Avatar name={student.name} uri={student.profileImage} online={student.isOnline} size={48} />
           <View style={{ flex: 1, gap: 3 }}>
-            <Heading numberOfLines={1}>{student.name}</Heading>
+            <VerifiedName name={student.name} verified={student.verified} />
             {student.college ? (
               <Caption numberOfLines={1}>
                 {student.college}
@@ -149,7 +150,7 @@ export function MatchCard({
             <Avatar name={match.name} uri={match.profileImage} online={match.isOnline} size={52} />
 
             <View style={{ flex: 1 }}>
-              <Heading numberOfLines={1}>{match.name}</Heading>
+              <VerifiedName name={match.name} verified={match.verified} />
               {match.college ? <Caption numberOfLines={1}>{match.college}</Caption> : null}
               <Row gap={t.spacing.md} style={{ marginTop: 4 }}>
                 <StarRating value={match.rating.average} count={match.rating.count} />

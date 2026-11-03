@@ -349,6 +349,8 @@ export function Button({
           borderColor: t.colors.borderStrong,
         },
         variant === 'danger' ? t.elevation(1) : undefined,
+        // Dimmed only when actually unavailable: a loading button is busy, not off limits.
+        disabled ? { opacity: 0.45 } : undefined,
         style,
       ]}
     >
@@ -926,3 +928,39 @@ export function StatTile({
 }
 
 export type { Theme };
+
+/** A student's name, with a tick beside it once they have confirmed their email. */
+export function VerifiedName({
+  name,
+  verified,
+  size = 'heading',
+}: {
+  name: string;
+  verified?: boolean;
+  size?: 'heading' | 'title';
+}) {
+  const t = useTheme();
+  const isTitle = size === 'title';
+  const shrink = { flexShrink: 1 };
+  return (
+    <Row gap={6}>
+      {isTitle ? (
+        <Title numberOfLines={2} style={shrink}>
+          {name}
+        </Title>
+      ) : (
+        <Heading numberOfLines={1} style={shrink}>
+          {name}
+        </Heading>
+      )}
+      {verified ? (
+        <Ionicons
+          name="checkmark-circle"
+          size={isTitle ? 20 : 16}
+          color={t.colors.primary}
+          accessibilityLabel="Verified email"
+        />
+      ) : null}
+    </Row>
+  );
+}

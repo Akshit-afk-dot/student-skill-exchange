@@ -37,6 +37,9 @@ export function OnboardingScreen() {
   const t = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const [index, setIndex] = useState(0);
+  // A horizontal list does not reliably give its items a height, so the space is measured
+  // and handed to each slide explicitly. Without this the content sits at the very top.
+  const [slideHeight, setSlideHeight] = useState<number | undefined>(undefined);
   const listRef = useRef<FlatList<Slide>>(null);
 
   // Kept in a ref: FlatList treats this callback as immutable after first render and
@@ -58,44 +61,47 @@ export function OnboardingScreen() {
 
   return (
     <Screen padded={false} edges={['top', 'bottom']}>
-      <FlatList
-        ref={listRef}
-        data={SLIDES}
-        keyExtractor={(item) => item.title}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-        renderItem={({ item }) => (
-          <View
-            style={{
-              width,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: t.spacing.xl,
-              gap: t.spacing.lg,
-            }}
-          >
+      <View style={{ flex: 1 }} onLayout={(e) => setSlideHeight(e.nativeEvent.layout.height)}>
+        <FlatList
+          ref={listRef}
+          data={SLIDES}
+          keyExtractor={(item) => item.title}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
+          renderItem={({ item }) => (
             <View
               style={{
-                width: 108,
-                height: 108,
-                borderRadius: 54,
-                backgroundColor: t.colors.primarySoft,
+                width,
+                height: slideHeight,
                 alignItems: 'center',
                 justifyContent: 'center',
+                paddingHorizontal: t.spacing.xl,
+                gap: t.spacing.lg,
               }}
             >
-              <Ionicons name={item.icon} size={50} color={t.colors.primary} />
+              <View
+                style={{
+                  width: 108,
+                  height: 108,
+                  borderRadius: 54,
+                  backgroundColor: t.colors.primarySoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name={item.icon} size={50} color={t.colors.primary} />
+              </View>
+              <Title style={{ textAlign: 'center' }}>{item.title}</Title>
+              <Body muted style={{ textAlign: 'center', lineHeight: 22 }}>
+                {item.body}
+              </Body>
             </View>
-            <Title style={{ textAlign: 'center' }}>{item.title}</Title>
-            <Body muted style={{ textAlign: 'center', lineHeight: 22 }}>
-              {item.body}
-            </Body>
-          </View>
-        )}
-      />
+          )}
+        />
+      </View>
 
       <View style={{ padding: t.spacing.xl, gap: t.spacing.md }}>
         <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: t.spacing.sm }}>

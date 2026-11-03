@@ -3,6 +3,7 @@ import type {
   AppNotification,
   AuthTokens,
   BadgeInfo,
+  BlockedStudent,
   CalendarEntry,
   ChatMessage,
   ConnectionView,
@@ -39,6 +40,7 @@ export const auth = {
     college?: string;
     department?: string;
     year?: number;
+    acceptTerms?: boolean;
   }) => api.post<AuthPayload>('/auth/register', body),
 
   login: (email: string, password: string) =>
@@ -104,6 +106,15 @@ export const users = {
 
   updateLocation: (longitude: number, latitude: number, city?: string) =>
     api.put<{ user: SelfUser }>('/users/me/location', { longitude, latitude, city }),
+
+  blocked: () => api.get<BlockedStudent[]>('/users/me/blocked'),
+
+  block: (id: string) => api.post<{ blocked: boolean }>(`/users/${id}/block`),
+
+  unblock: (id: string) => api.delete<{ blocked: boolean }>(`/users/${id}/block`),
+
+  deleteAccount: (password?: string) =>
+    api.delete<{ deleted: boolean }>('/users/me', password ? { password } : {}),
 };
 
 export const skills = {

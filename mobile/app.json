@@ -11,21 +11,20 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#4F46E5"
+      "backgroundColor": "#5B4BE8"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "edu.college.skillexchange",
+      "bundleIdentifier": "com.akshitkumar.skillexchange",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Your location is used to find students nearby who can teach you in person.",
-        "NSPhotoLibraryUsageDescription": "Choose a photo for your profile or to share in a chat.",
-        "NSCameraUsageDescription": "Take a photo for your profile or to share in a chat."
+        "NSPhotoLibraryUsageDescription": "Choose a photo for your profile or to share in a chat."
       }
     },
     "android": {
-      "package": "edu.college.skillexchange",
+      "package": "com.akshitkumar.skillexchange",
       "adaptiveIcon": {
-        "backgroundColor": "#4F46E5",
+        "backgroundColor": "#5B4BE8",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -36,7 +35,8 @@
       ],
       "predictiveBackGestureEnabled": false,
       "blockedPermissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -49,7 +49,8 @@
       [
         "expo-image-picker",
         {
-          "microphonePermission": false
+          "microphonePermission": false,
+          "cameraPermission": false
         }
       ],
       "expo-web-browser",
