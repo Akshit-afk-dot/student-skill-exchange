@@ -44,7 +44,8 @@
       "expo-secure-store",
       "expo-location",
       "expo-image-picker",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ],
     "extra": {
       "apiUrl": "http://localhost:4000",
