@@ -34,7 +34,10 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
       ],
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -43,7 +46,12 @@
     "plugins": [
       "expo-secure-store",
       "expo-location",
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "microphonePermission": false
+        }
+      ],
       "expo-web-browser",
       "expo-font"
     ],
@@ -54,7 +62,11 @@
         "ios": "",
         "android": "",
         "web": ""
+      },
+      "eas": {
+        "projectId": "0aebca0f-a2f6-4167-b63f-58207d32a9b0"
       }
-    }
+    },
+    "owner": "akshit-afk-dot0102"
   }
 }
