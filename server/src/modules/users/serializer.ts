@@ -100,7 +100,7 @@ export function selfUser(user: UserDoc): SelfUser {
     status: user.status,
     emailVerified: user.emailVerified,
     // Tells the client whether to offer "change password" or "set a password".
-    hasPassword: Boolean(user.passwordHash),
+    hasPassword: user.hasPassword === true,
     stats: {
       ...base.stats,
       minutesTaught: user.stats?.minutesTaught ?? 0,

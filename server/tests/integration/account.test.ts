@@ -15,6 +15,7 @@ import {
 } from '../../src/models';
 import { generateOneTimeToken } from '../../src/modules/auth/tokens';
 import { recalculateRating } from '../../src/modules/users/service';
+import { ensureSeedData } from '../../src/seed/bootstrap';
 import {
   API,
   addUserSkill,
@@ -165,6 +166,36 @@ describe('blocking', () => {
       .post(`${API}/users/${aarav.id}/block`)
       .set(auth(aarav.accessToken))
       .expect(400);
+  });
+});
+
+describe('hasPassword', () => {
+  it('stays true on ordinary reads, which do not load the password hash', async () => {
+    const { aarav } = await setupPair();
+
+    const me = await request(getApp()).get(`${API}/auth/me`).set(auth(aarav.accessToken)).expect(200);
+    expect(me.body.data.user.hasPassword).toBe(true);
+
+    const patched = await request(getApp())
+      .patch(`${API}/users/me`)
+      .set(auth(aarav.accessToken))
+      .send({ bio: 'Still has a password' })
+      .expect(200);
+    expect(patched.body.data.user.hasPassword).toBe(true);
+  });
+
+  it('is false for an account with no password, such as Google sign-in', async () => {
+    const user = await User.create({ name: 'Google Student', email: 'google.student@college.edu' });
+    expect(user.hasPassword).toBe(false);
+  });
+
+  it('is repaired at startup for accounts created before the field existed', async () => {
+    const { aarav } = await setupPair();
+    await User.updateOne({ _id: aarav.id }, { $unset: { hasPassword: 1 } });
+
+    await ensureSeedData();
+
+    expect((await User.findById(aarav.id))?.hasPassword).toBe(true);
   });
 });
 

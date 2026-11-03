@@ -13,6 +13,18 @@ export async function ensureSeedData(): Promise<void> {
   await ensureCategories();
   await ensureSkills();
   await ensureAdmin();
+  await backfillHasPassword();
+}
+
+/**
+ * Accounts created before `hasPassword` existed have a hash but no flag. Idempotent, and
+ * after the first run it matches nothing.
+ */
+async function backfillHasPassword(): Promise<void> {
+  await User.updateMany(
+    { passwordHash: { $exists: true }, hasPassword: { $ne: true } },
+    { $set: { hasPassword: true } },
+  );
 }
 
 async function ensureCategories(): Promise<void> {

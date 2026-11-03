@@ -180,6 +180,13 @@ GOOGLE_AUTH_DISABLED` rather than pretending to work.
 Without this, verification links and 6-digit reset codes are **written to the server log**.
 That is genuinely enough to demo both flows — you read the code out of the terminal.
 
+**On Render's free plan, use Brevo on port 2525.** Free Render services cannot send on ports
+25, 465 or 587, so Gmail below only works on a paid instance. In Brevo, verify a sender, then
+set `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=2525`, `SMTP_SECURE=false`, `SMTP_USER` and
+`SMTP_PASS` (an SMTP key, not an API key), and `MAIL_FROM` with your verified sender.
+Check locally with `npm run mail:test -- you@example.com`, and on the server with `/health`:
+`email` should say `ok`. Email verification is only enforced while that is the case.
+
 ### Gmail
 
 Gmail rejects your normal account password. You need an app password:

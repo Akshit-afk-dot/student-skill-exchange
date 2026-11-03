@@ -36,6 +36,12 @@ export interface IUser {
   name: string;
   email: string;
   passwordHash?: string;
+  /**
+   * Whether a password is set. Stored because `passwordHash` is never selected by default:
+   * computing this from the hash made every ordinary read report a password account as
+   * Google-only.
+   */
+  hasPassword: boolean;
   googleId?: string;
   role: UserRole;
   status: UserStatus;
@@ -110,6 +116,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     // select:false keeps the hash out of every ordinary query result by default.
     passwordHash: { type: String, select: false },
+    hasPassword: { type: Boolean, default: false },
     googleId: { type: String, sparse: true, index: true },
     role: { type: String, enum: USER_ROLES, default: 'STUDENT', index: true },
     status: { type: String, enum: USER_STATUSES, default: 'ACTIVE', index: true },
@@ -201,6 +208,11 @@ userSchema.index({ location: '2dsphere' });
 // Text search over the profile blurb powers the people-search box.
 userSchema.index({ name: 'text', bio: 'text', college: 'text' });
 userSchema.index({ status: 1, role: 1, createdAt: -1 });
+
+// Every password write goes through a document save, so this cannot drift from the hash.
+userSchema.pre('save', function () {
+  if (this.isModified('passwordHash')) this.hasPassword = Boolean(this.passwordHash);
+});
 
 userSchema.methods.verifyPassword = async function (plain: string): Promise<boolean> {
   if (!this.passwordHash) return false;

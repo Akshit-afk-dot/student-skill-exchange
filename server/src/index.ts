@@ -2,9 +2,10 @@ import http from 'node:http';
 import type { Server as SocketServer } from 'socket.io';
 import { createApp } from './app';
 import { connectDatabase, disconnectDatabase } from './config/db';
-import { env, isProd } from './config/env';
+import { env, isProd, mailEnabled } from './config/env';
 import { logger } from './config/logger';
 import { startJobs, stopJobs } from './jobs';
+import { checkMailTransport } from './modules/notifications/mail';
 import { createSocketServer } from './realtime/socket';
 import { ensureSeedData } from './seed/bootstrap';
 
@@ -13,6 +14,11 @@ async function main(): Promise<void> {
 
   // Categories and the bootstrap admin must exist before the first request arrives.
   await ensureSeedData();
+
+  if (mailEnabled) {
+    void checkMailTransport();
+    setInterval(() => void checkMailTransport(), 5 * 60_000).unref();
+  }
 
   const app = createApp();
   const server = http.createServer(app);

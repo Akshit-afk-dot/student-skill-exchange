@@ -5,10 +5,11 @@ import express, { type Express } from 'express';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
 import mongoose from 'mongoose';
-import { env, isProd, isTest, storageDriver } from './config/env';
+import { env, isProd, isTest, mailEnabled, storageDriver } from './config/env';
 import { logger } from './config/logger';
 import { errorHandler, globalLimiter, notFoundHandler } from './middleware';
 import { ApiError } from './utils/errors';
+import { mailDeliverable } from './modules/notifications/mail';
 import { pagesRouter } from './modules/pages/router';
 import { apiRouter } from './routes';
 
@@ -87,6 +88,7 @@ export function createApp(): Express {
       status: healthy ? 'ok' : 'degraded',
       uptime: Math.round(process.uptime()),
       database: ['disconnected', 'connected', 'connecting', 'disconnecting'][dbState] ?? 'unknown',
+      email: !mailEnabled ? 'not configured' : mailDeliverable() ? 'ok' : 'unreachable',
       version: process.env.npm_package_version ?? '1.0.0',
       timestamp: new Date().toISOString(),
     });

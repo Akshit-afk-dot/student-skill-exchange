@@ -59,8 +59,8 @@ export async function register(input: RegisterInput, ctx: RequestContext): Promi
     ...(input.acceptTerms ? { termsAcceptedAt: new Date() } : {}),
   });
 
-  // Awaited but non-fatal: `sendMail` swallows transport errors internally.
-  await sendVerificationEmail(user.email, user.name, token);
+  // Not awaited: a slow mail server must not hold up sign-up. `sendMail` handles its own errors.
+  void sendVerificationEmail(user.email, user.name, token);
 
   return { user, tokens: await issueTokens(String(user._id), user.role, ctx) };
 }
@@ -195,7 +195,8 @@ export async function forgotPassword(email: string): Promise<void> {
   user.passwordResetExpires = new Date(Date.now() + RESET_TTL_MS);
   await user.save();
 
-  await sendPasswordResetEmail(user.email, user.name, otp);
+  // Not awaited: waiting would make known addresses measurably slower than unknown ones.
+  void sendPasswordResetEmail(user.email, user.name, otp);
 }
 
 export async function resetPassword(

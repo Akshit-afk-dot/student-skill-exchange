@@ -13,6 +13,10 @@ function getTransporter(): Transporter | null {
       port: env.SMTP_PORT,
       secure: env.SMTP_SECURE,
       auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
+      // Hosts that block SMTP ports hang rather than refuse, and the default wait is minutes.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
     });
   }
   return transporter;
@@ -46,6 +50,30 @@ export async function sendMail(payload: MailPayload): Promise<void> {
   } catch (err) {
     // A failed welcome email must not fail the registration that triggered it.
     logger.error({ err, to: payload.to }, 'Failed to send email');
+  }
+}
+
+let deliverable = false;
+
+/** Whether the last connection check reached the SMTP server. */
+export function mailDeliverable(): boolean {
+  return deliverable;
+}
+
+/**
+ * Checks the SMTP connection. Run at boot and periodically, because configured is not the
+ * same as working: Render's free tier blocks ports 25, 465 and 587, and enforcing email
+ * verification with no mail getting through would lock out every new student.
+ */
+export async function checkMailTransport(): Promise<void> {
+  const tx = getTransporter();
+  if (!tx) return;
+  try {
+    await tx.verify();
+    deliverable = true;
+  } catch (err) {
+    deliverable = false;
+    logger.error({ err }, 'SMTP is configured but unreachable; email verification is not being enforced');
   }
 }
 
