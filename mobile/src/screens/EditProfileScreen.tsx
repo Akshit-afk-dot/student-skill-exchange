@@ -17,13 +17,13 @@ import {
   Row,
   Screen,
   SectionHeader,
-  Title,
 } from '../components/ui';
 import { useAction } from '../hooks/useAsync';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
 import { WEEKDAY_NAMES, slotLabel } from '../utils/format';
 import type { AvailabilitySlot, TeachingMode } from '../types';
+import { haptics } from '../haptics';
 
 const TIME_OPTIONS = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
 
@@ -65,6 +65,7 @@ export function EditProfileScreen() {
       availability,
     });
     setUser(result.user);
+    haptics.success();
     navigation.goBack();
     return result;
   });
@@ -133,8 +134,7 @@ export function EditProfileScreen() {
 
   return (
     <Screen scroll>
-      <Title>Edit profile</Title>
-      <Body muted style={{ marginTop: 4, marginBottom: t.spacing.lg }}>
+      <Body muted style={{ marginBottom: t.spacing.lg }}>
         A complete profile gets noticeably better matches.
       </Body>
 

@@ -1,13 +1,26 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
-import { Banner, Body, Button, Caption, Field, Input, Row, Screen, Title } from '../../components/ui';
+import { KeyboardAvoidingView, Platform, View } from 'react-native';
+import {
+  Banner,
+  Body,
+  Button,
+  Caption,
+  Field,
+  Input,
+  PasswordInput,
+  Row,
+  Screen,
+  TextButton,
+} from '../../components/ui';
+import { haptics } from '../../haptics';
 import { useGoogleSignIn } from '../../hooks/useGoogleSignIn';
 import { useAction } from '../../hooks/useAsync';
 import { useAuth } from '../../store/auth';
 import { useTheme } from '../../theme';
 import type { AuthStackParamList } from '../../navigation/types';
+import { AuthHeader } from './AuthHeader';
 
 export function LoginScreen() {
   const t = useTheme();
@@ -17,27 +30,26 @@ export function LoginScreen() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
-  const submit = useAction(async () => signIn(email.trim().toLowerCase(), password));
+  const submit = useAction(async () => {
+    await signIn(email.trim().toLowerCase(), password);
+    // The door opening: felt as the app swaps to the signed-in tabs.
+    haptics.success();
+  });
 
   const canSubmit = email.trim().length > 0 && password.length > 0;
 
   return (
     <Screen scroll>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={{ paddingTop: t.spacing.xxl, marginBottom: t.spacing.xl }}>
-          <Title>Welcome back</Title>
-          <Body muted style={{ marginTop: t.spacing.xs }}>
-            Sign in to pick up where you left off.
-          </Body>
-        </View>
+        <AuthHeader title="Welcome back" subtitle="Sign in to pick up where you left off." />
 
         {submit.error ? <Banner tone="danger" text={submit.error} /> : null}
         {google.error ? <Banner tone="danger" text={google.error} /> : null}
 
         <Field label="Email" error={submit.fieldErrors?.email}>
           <Input
+            icon="mail-outline"
             value={email}
             onChangeText={setEmail}
             placeholder="you@college.edu"
@@ -45,48 +57,30 @@ export function LoginScreen() {
             autoCapitalize="none"
             autoComplete="email"
             textContentType="emailAddress"
+            returnKeyType="next"
             error={Boolean(submit.fieldErrors?.email)}
           />
         </Field>
 
         <Field label="Password" error={submit.fieldErrors?.password}>
-          <View>
-            <Input
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Your password"
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoComplete="current-password"
-              textContentType="password"
-              onSubmitEditing={() => canSubmit && void submit.run()}
-              returnKeyType="go"
-              error={Boolean(submit.fieldErrors?.password)}
-              style={{ paddingRight: 64 }}
-            />
-            <Pressable
-              onPress={() => setShowPassword((v) => !v)}
-              accessibilityRole="button"
-              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-              style={{ position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' }}
-              hitSlop={8}
-            >
-              <Text style={{ color: t.colors.primary, fontSize: 13, fontWeight: '600' }}>
-                {showPassword ? 'Hide' : 'Show'}
-              </Text>
-            </Pressable>
-          </View>
+          <PasswordInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Your password"
+            autoComplete="current-password"
+            textContentType="password"
+            onSubmitEditing={() => canSubmit && void submit.run()}
+            returnKeyType="go"
+            error={Boolean(submit.fieldErrors?.password)}
+          />
         </Field>
 
-        <Pressable
+        <TextButton
+          label="Forgot password?"
+          size={14}
           onPress={() => navigation.navigate('ForgotPassword', { email: email.trim() })}
-          style={{ alignSelf: 'flex-end', marginBottom: t.spacing.lg }}
-          hitSlop={8}
-        >
-          <Text style={{ color: t.colors.primary, fontSize: 14, fontWeight: '600' }}>
-            Forgot password?
-          </Text>
-        </Pressable>
+          style={{ alignSelf: 'flex-end', marginTop: -t.spacing.sm, marginBottom: t.spacing.lg }}
+        />
 
         <Button
           label="Sign in"
@@ -104,7 +98,7 @@ export function LoginScreen() {
             </Row>
             <Button
               label="Continue with Google"
-              variant="ghost"
+              variant="secondary"
               icon="logo-google"
               onPress={google.signIn}
               loading={google.pending}
@@ -112,21 +106,10 @@ export function LoginScreen() {
           </>
         ) : null}
 
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'center',
-            marginTop: t.spacing.xl,
-            gap: 4,
-          }}
-        >
+        <Row gap={4} style={{ justifyContent: 'center', marginTop: t.spacing.xl }}>
           <Body muted>New here?</Body>
-          <Pressable onPress={() => navigation.navigate('Register')} hitSlop={8}>
-            <Text style={{ color: t.colors.primary, fontSize: 15, fontWeight: '600' }}>
-              Create an account
-            </Text>
-          </Pressable>
-        </View>
+          <TextButton label="Create an account" onPress={() => navigation.navigate('Register')} />
+        </Row>
       </KeyboardAvoidingView>
     </Screen>
   );

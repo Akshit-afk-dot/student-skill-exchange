@@ -6,7 +6,7 @@ import { Banner, Body, Button, Card, Field, Input, Row, Screen, Title } from '..
 import { useAction } from '../hooks/useAsync';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
-import { haptics } from '../utils/haptics';
+import { haptics } from '../haptics';
 
 const WHAT_GOES = [
   'Your profile, photo and skills',

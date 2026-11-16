@@ -1,7 +1,13 @@
-import { Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { useTheme } from '../theme';
+import { haptics } from '../haptics';
 import { useCountUp } from '../hooks/useCountUp';
+import { useTheme } from '../theme';
+import { Text } from './Text';
+
+/** How long the ring takes to fill. The haptic pattern is timed against this. */
+export const SCORE_REVEAL_MS = 900;
 
 /**
  * Circular match-score dial.
@@ -12,14 +18,19 @@ import { useCountUp } from '../hooks/useCountUp';
  *
  * Both the arc and the number are driven by one counted value, so they can never
  * disagree mid-animation, and it renders identically on native and web.
+ *
+ * With `felt`, the fill is accompanied by haptics on the same curve: ticks that spread
+ * apart as the ring slows, then a landing whose weight depends on the score. Use that
+ * once per screen, on the ring the person came to see, never on every ring in a list.
  */
 export function ScoreRing({
   percent,
   size = 72,
-  strokeWidth = 7,
+  strokeWidth,
   label,
   delay = 0,
   twoWay = false,
+  felt = false,
 }: {
   percent: number;
   size?: number;
@@ -28,26 +39,42 @@ export function ScoreRing({
   delay?: number;
   /** Reciprocal exchanges get the success gradient instead of the primary one. */
   twoWay?: boolean;
+  /** Play the score-reveal haptic pattern alongside the fill. */
+  felt?: boolean;
 }) {
   const t = useTheme();
   const clamped = Math.max(0, Math.min(100, Math.round(percent)));
+  const stroke = strokeWidth ?? Math.max(6, Math.round(size * 0.11));
 
-  const radius = (size - strokeWidth) / 2;
+  const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  const shown = useCountUp(clamped, { duration: 900, delay });
+  const shown = useCountUp(clamped, { duration: SCORE_REVEAL_MS, delay });
   const offset = circumference * (1 - shown / 100);
 
-  const gradientId = `ring-${twoWay ? 'two' : 'one'}`;
+  useEffect(() => {
+    if (!felt) return;
+    let cancel: (() => void) | undefined;
+    // Started after the same delay as the count-up, so the two stay in step.
+    const timer = setTimeout(() => {
+      cancel = haptics.scoreReveal(clamped, SCORE_REVEAL_MS, twoWay);
+    }, delay);
+    return () => {
+      clearTimeout(timer);
+      cancel?.();
+    };
+  }, [felt, clamped, twoWay, delay]);
+
+  const gradientId = `ring-${twoWay ? 'two' : 'one'}-${size}`;
   const [from, to] = twoWay
     ? [t.colors.success, t.colors.accent]
-    : [t.colors.primary, t.colors.primaryDeep];
+    : [t.dark ? '#B4ABFF' : '#7C6BFF', t.colors.primaryDeep];
 
   return (
     <View
       style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
       accessibilityRole="image"
-      accessibilityLabel={`${clamped} percent match`}
+      accessibilityLabel={`${clamped} percent match${twoWay ? ', two-way exchange' : ''}`}
     >
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
         <Defs>
@@ -61,8 +88,8 @@ export function ScoreRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={t.colors.surfaceAlt}
-          strokeWidth={strokeWidth}
+          stroke={twoWay ? t.colors.successSoft : t.colors.primarySoft}
+          strokeWidth={stroke}
           fill="none"
         />
 
@@ -72,7 +99,7 @@ export function ScoreRing({
           cy={size / 2}
           r={radius}
           stroke={`url(#${gradientId})`}
-          strokeWidth={strokeWidth}
+          strokeWidth={stroke}
           strokeLinecap="round"
           fill="none"
           strokeDasharray={circumference}
@@ -86,19 +113,34 @@ export function ScoreRing({
           <Text
             style={{
               color: t.colors.text,
-              fontSize: size * 0.28,
+              fontSize: size * 0.3,
+              lineHeight: size * 0.36,
               fontWeight: '800',
+              letterSpacing: -0.5,
               fontVariant: ['tabular-nums'],
             }}
           >
             {shown}
           </Text>
-          <Text style={{ color: t.colors.textMuted, fontSize: size * 0.16, fontWeight: '700' }}>
+          <Text
+            style={{
+              color: t.colors.textMuted,
+              fontSize: Math.max(11, size * 0.15),
+              fontWeight: '700',
+            }}
+          >
             %
           </Text>
         </View>
         {label ? (
-          <Text style={{ color: t.colors.textMuted, fontSize: size * 0.13, fontWeight: '600' }}>
+          <Text
+            style={{
+              color: t.colors.textMuted,
+              fontSize: Math.max(11, size * 0.11),
+              fontWeight: '600',
+              marginTop: -2,
+            }}
+          >
             {label}
           </Text>
         ) : null}
@@ -129,12 +171,19 @@ export function ScoreBar({
   const shown = useCountUp(target, { duration: 700, delay: index * 80 });
 
   return (
-    <View style={{ marginBottom: t.spacing.sm }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-        <Text style={{ color: t.colors.text, fontSize: 13 }}>
+    <View style={{ marginBottom: t.spacing.md }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          marginBottom: 6,
+        }}
+      >
+        <Text style={{ color: t.colors.text, fontSize: 14, lineHeight: 19, fontWeight: '600' }}>
           {label}
           {weight !== undefined ? (
-            <Text style={{ color: t.colors.textMuted, fontSize: 11 }}>
+            <Text style={{ color: t.colors.textMuted, fontSize: 12, fontWeight: '500' }}>
               {'  '}
               {Math.round(weight * 100)}% of score
             </Text>
@@ -142,9 +191,9 @@ export function ScoreBar({
         </Text>
         <Text
           style={{
-            color: t.colors.textMuted,
-            fontSize: 12,
-            fontWeight: '600',
+            color: t.colors.text,
+            fontSize: 14,
+            fontWeight: '700',
             fontVariant: ['tabular-nums'],
           }}
         >
@@ -154,7 +203,7 @@ export function ScoreBar({
 
       <View
         style={{
-          height: 7,
+          height: 8,
           borderRadius: 4,
           backgroundColor: t.colors.surfaceAlt,
           overflow: 'hidden',

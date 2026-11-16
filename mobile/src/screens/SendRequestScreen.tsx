@@ -21,6 +21,7 @@ import { useAction, useAsync } from '../hooks/useAsync';
 import { useTheme } from '../theme';
 import { offerEmailVerification } from '../utils/verification';
 import type { RootStackParamList } from '../navigation/types';
+import { haptics } from '../haptics';
 
 /**
  * Composes a learning request.
@@ -81,6 +82,8 @@ export function SendRequestScreen() {
       offerEmailVerification(err);
       throw err;
     }
+    // A request has left your hands: a click as it goes, a confirmation as it lands.
+    haptics.sent();
     navigation.navigate('LearningRequests');
     return true;
   });

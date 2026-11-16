@@ -13,7 +13,6 @@ import {
   Row,
   Screen,
   StarRating,
-  Title,
 } from '../components/ui';
 import { useAsync } from '../hooks/useAsync';
 import { useAuth } from '../store/auth';
@@ -32,8 +31,7 @@ export function LeaderboardScreen() {
   return (
     <Screen padded={false} edges={['top']}>
       <View style={{ padding: t.spacing.lg, paddingBottom: t.spacing.sm }}>
-        <Title>Leaderboard</Title>
-        <Body muted style={{ marginTop: 4 }}>
+        <Body muted>
           Points come from teaching, learning and keeping a streak.
         </Body>
         <Row gap={t.spacing.sm} style={{ marginTop: t.spacing.md }}>

@@ -1,17 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, View } from 'react-native';
 import { chat, requests } from '../api/endpoints';
 import { RT, onEvent } from '../api/socket';
-import { Caption, LoadingView } from '../components/ui';
-import { haptics } from '../utils/haptics';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
+import { TabBar } from './TabBar';
 
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -55,7 +51,7 @@ const Tabs = createBottomTabNavigator<MainTabParamList>();
 
 function AuthNavigator() {
   return (
-    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+    <AuthStack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <AuthStack.Screen name="Onboarding" component={OnboardingScreen} />
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Register" component={RegisterScreen} />
@@ -64,81 +60,7 @@ function AuthNavigator() {
   );
 }
 
-/** Small red count on a tab icon. */
-function TabBadge({ count }: { count: number }) {
-  const t = useTheme();
-  if (count <= 0) return null;
-  return (
-    <View
-      style={{
-        position: 'absolute',
-        top: -4,
-        right: -10,
-        minWidth: 17,
-        height: 17,
-        paddingHorizontal: 4,
-        borderRadius: 9,
-        backgroundColor: t.colors.danger,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Caption style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>
-        {count > 99 ? '99+' : count}
-      </Caption>
-    </View>
-  );
-}
-
-/**
- * Tab icon that lifts and swells when its tab becomes active.
- *
- * Small, but it is the interaction a user performs most often in the app, so it is the
- * one most worth making feel deliberate.
- */
-function TabIcon({
-  focused,
-  name,
-  activeName,
-  color,
-  size,
-  badge,
-}: {
-  focused: boolean;
-  name: keyof typeof Ionicons.glyphMap;
-  activeName: keyof typeof Ionicons.glyphMap;
-  color: string;
-  size: number;
-  badge?: number;
-}) {
-  const lift = useSharedValue(focused ? 1 : 0);
-
-  useEffect(() => {
-    lift.value = withSpring(focused ? 1 : 0, { damping: 14, stiffness: 260, mass: 0.6 });
-  }, [focused, lift]);
-
-  const style = useAnimatedStyle(() => ({
-    transform: [{ translateY: -3 * lift.value }, { scale: 1 + 0.12 * lift.value }],
-  }));
-
-  return (
-    <Animated.View style={style}>
-      <Ionicons name={focused ? activeName : name} size={size} color={color} />
-      {badge !== undefined ? <TabBadge count={badge} /> : null}
-    </Animated.View>
-  );
-}
-
-const TAB_ICONS: Record<keyof MainTabParamList, { on: keyof typeof Ionicons.glyphMap; off: keyof typeof Ionicons.glyphMap }> = {
-  HomeTab: { on: 'home', off: 'home-outline' },
-  ExploreTab: { on: 'compass', off: 'compass-outline' },
-  MatchesTab: { on: 'git-compare', off: 'git-compare-outline' },
-  ChatsTab: { on: 'chatbubbles', off: 'chatbubbles-outline' },
-  ProfileTab: { on: 'person', off: 'person-outline' },
-};
-
 function TabNavigator() {
-  const t = useTheme();
   const [unreadChats, setUnreadChats] = useState(0);
 
   // Badge counts are polled once on mount and then kept current by socket events,
@@ -157,47 +79,16 @@ function TabNavigator() {
     };
   }, []);
 
-  const insets = useSafeAreaInsets();
-
   return (
-    <Tabs.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: t.colors.primary,
-        tabBarInactiveTintColor: t.colors.textMuted,
-        tabBarStyle: {
-          backgroundColor: t.colors.surface,
-          borderTopColor: t.colors.border,
-          // The default height leaves the label almost no room under the larger active
-          // icon on phones without a gesture bar, so it is set explicitly.
-          height: 60 + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: 6 + insets.bottom,
-        },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-        tabBarIcon: ({ focused, color, size }) => {
-          const icons = TAB_ICONS[route.name];
-          return (
-            <TabIcon
-              focused={focused}
-              name={icons.off}
-              activeName={icons.on}
-              color={color}
-              size={size}
-              {...(route.name === 'ChatsTab' ? { badge: unreadChats } : {})}
-            />
-          );
-        },
-      })}
-      screenListeners={{
-        // A tick on every tab change, so switching sections is felt as well as seen.
-        tabPress: () => haptics.selection(),
-      }}
-    >
+    <Tabs.Navigator tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="HomeTab" component={HomeScreen} options={{ title: 'Home' }} />
       <Tabs.Screen name="ExploreTab" component={ExploreScreen} options={{ title: 'Explore' }} />
       <Tabs.Screen name="MatchesTab" component={MatchesScreen} options={{ title: 'Matches' }} />
-      <Tabs.Screen name="ChatsTab" component={ChatListScreen} options={{ title: 'Chats' }} />
+      <Tabs.Screen
+        name="ChatsTab"
+        component={ChatListScreen}
+        options={{ title: 'Chats', ...(unreadChats > 0 ? { tabBarBadge: unreadChats } : {}) }}
+      />
       <Tabs.Screen name="ProfileTab" component={ProfileScreen} options={{ title: 'Profile' }} />
     </Tabs.Navigator>
   );
@@ -211,8 +102,13 @@ function RootNavigator() {
       screenOptions={{
         headerStyle: { backgroundColor: t.colors.bg },
         headerTintColor: t.colors.text,
-        headerTitleStyle: { fontWeight: '600' },
+        // The family carries the weight; a fontWeight here would fake-bold it on Android.
+        headerTitleStyle: { fontFamily: t.fonts.bold, fontSize: 17 },
+        headerTitleAlign: 'center',
         headerShadowVisible: false,
+        // Just the chevron: the previous screen's title beside it is noise.
+        headerBackButtonDisplayMode: 'minimal',
+        animation: 'slide_from_right',
         contentStyle: { backgroundColor: t.colors.bg },
       }}
     >
@@ -323,11 +219,28 @@ export function Navigation() {
 
   // The splash state: hold here until the stored session has been checked, so a
   // signed-in student never sees the login screen flash on cold start.
-  if (initialising) return <LoadingView label="Loading…" />;
+  if (initialising) {
+    // The same colour as the launch screen, so startup reads as one continuous moment.
+    return (
+      <View style={{ flex: 1, backgroundColor: '#5B4BE8', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color="#FFFFFF" size="large" accessibilityLabel="Loading" />
+      </View>
+    );
+  }
+
+  // Each family is a single weight, so every slot asks for "normal" and lets the file
+  // itself supply the weight.
+  const navFonts = {
+    regular: { fontFamily: t.fonts.regular, fontWeight: 'normal' as const },
+    medium: { fontFamily: t.fonts.medium, fontWeight: 'normal' as const },
+    bold: { fontFamily: t.fonts.bold, fontWeight: 'normal' as const },
+    heavy: { fontFamily: t.fonts.extrabold, fontWeight: 'normal' as const },
+  };
 
   const navTheme = t.dark
     ? {
         ...DarkTheme,
+        fonts: navFonts,
         colors: {
           ...DarkTheme.colors,
           background: t.colors.bg,
@@ -339,6 +252,7 @@ export function Navigation() {
       }
     : {
         ...DefaultTheme,
+        fonts: navFonts,
         colors: {
           ...DefaultTheme.colors,
           background: t.colors.bg,

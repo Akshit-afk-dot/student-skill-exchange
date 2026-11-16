@@ -11,7 +11,7 @@ import {
   EmptyState,
   Row,
   Screen,
-  Title,
+  Body,
 } from '../components/ui';
 import { SkeletonList } from '../components/motion';
 import { useAsync } from '../hooks/useAsync';
@@ -44,7 +44,7 @@ export function MySessionsScreen() {
     <Screen padded={false} edges={['top']}>
       <View style={{ padding: t.spacing.lg, paddingBottom: t.spacing.sm }}>
         <Row style={{ justifyContent: 'space-between' }}>
-          <Title>Sessions</Title>
+          <Body muted>Everything you teach and learn.</Body>
           <Pressable
             onPress={() => navigation.navigate('Calendar')}
             accessibilityRole="button"

@@ -4,35 +4,38 @@ import { useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { requests as requestsApi } from '../api/endpoints';
 import { RequestCard } from '../components/cards';
-import {
-  Banner,
-  Body,
-  Button,
-  Chip,
-  EmptyState,
-  Row,
-  Screen,
-  Title,
-} from '../components/ui';
+import { ConnectionCelebration } from '../components/ConnectionCelebration';
 import { SkeletonList } from '../components/motion';
-import { haptics } from '../utils/haptics';
+import { Banner, Button, Caption, EmptyState, Row, Screen, Segmented } from '../components/ui';
+import { haptics } from '../haptics';
 import { useAction, useAsync } from '../hooks/useAsync';
+import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
+import type { LearningRequest } from '../types';
 import type { RootStackParamList } from '../navigation/types';
+
+type Direction = 'incoming' | 'outgoing';
+
+interface Celebration {
+  request: LearningRequest;
+  conversationId: string;
+}
 
 export function LearningRequestsScreen() {
   const t = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [direction, setDirection] = useState<'incoming' | 'outgoing'>('incoming');
+  const { user } = useAuth();
+  const [direction, setDirection] = useState<Direction>('incoming');
+  const [celebration, setCelebration] = useState<Celebration | null>(null);
 
   const state = useAsync(async () => requestsApi.list({ direction, page: 1 }), [direction]);
 
-  // Accepting creates a connection, so it gets the success notification pattern;
-  // declining and withdrawing get a duller thud. The difference is deliberate —
-  // the two outcomes should not feel the same in the hand.
-  const accept = useAction(async (id: string) => {
-    const result = await requestsApi.accept(id);
-    haptics.success();
+  // Accepting makes a connection, the best thing that happens in this app, so it gets
+  // the full celebration (which plays its own haptics). Declining and withdrawing get a
+  // dull reject buzz. The two outcomes should not feel alike in the hand.
+  const accept = useAction(async (request: LearningRequest) => {
+    const result = await requestsApi.accept(request._id);
+    setCelebration({ request, conversationId: result.conversationId });
     state.reload();
     return result;
   });
@@ -49,36 +52,42 @@ export function LearningRequestsScreen() {
 
   const busy = accept.pending || reject.pending || cancel.pending;
   const actionError = accept.error ?? reject.error ?? cancel.error;
+  const pendingCount = (state.data?.items ?? []).filter((r) => r.status === 'PENDING').length;
 
   return (
-    <Screen padded={false} edges={['top']}>
-      <View style={{ padding: t.spacing.lg, paddingBottom: t.spacing.sm }}>
-        <Title>Learning requests</Title>
-        <Row gap={t.spacing.sm} style={{ marginTop: t.spacing.md }}>
-          <Chip
-            label="Received"
-            selected={direction === 'incoming'}
-            onPress={() => setDirection('incoming')}
-          />
-          <Chip
-            label="Sent"
-            selected={direction === 'outgoing'}
-            onPress={() => setDirection('outgoing')}
-          />
-        </Row>
+    <Screen padded={false} edges={[]}>
+      <View style={{ paddingHorizontal: t.spacing.page, paddingTop: t.spacing.lg, paddingBottom: t.spacing.sm }}>
+        <Segmented<Direction>
+          value={direction}
+          onChange={setDirection}
+          options={[
+            { value: 'incoming', label: 'Received', icon: 'arrow-down' },
+            { value: 'outgoing', label: 'Sent', icon: 'arrow-up' },
+          ]}
+        />
+        {!state.loading && pendingCount > 0 ? (
+          <Caption style={{ marginTop: t.spacing.md }}>
+            {pendingCount} waiting for {direction === 'incoming' ? 'your answer' : 'a reply'}
+          </Caption>
+        ) : null}
       </View>
 
       {state.loading ? (
-        <View style={{ paddingHorizontal: t.spacing.lg }}>
+        <View style={{ paddingHorizontal: t.spacing.page, paddingTop: t.spacing.sm }}>
           <SkeletonList count={3} lines={2} />
         </View>
       ) : (
         <FlatList
           data={state.data?.items ?? []}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ padding: t.spacing.lg, paddingTop: t.spacing.sm }}
+          contentContainerStyle={{
+            paddingHorizontal: t.spacing.page,
+            paddingTop: t.spacing.sm,
+            paddingBottom: t.spacing.xxl,
+          }}
           refreshing={state.refreshing}
           onRefresh={state.refresh}
+          showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <>
               {state.error ? <Banner tone="danger" text={state.error} /> : null}
@@ -87,7 +96,7 @@ export function LearningRequestsScreen() {
           }
           ListEmptyComponent={
             <EmptyState
-              icon="mail-outline"
+              icon={direction === 'incoming' ? 'mail-open' : 'paper-plane'}
               title={direction === 'incoming' ? 'No requests yet' : 'You have not sent any'}
               message={
                 direction === 'incoming'
@@ -112,50 +121,64 @@ export function LearningRequestsScreen() {
                 item.status === 'PENDING' ? (
                   direction === 'incoming' ? (
                     <Row gap={t.spacing.sm}>
-                      <Button
-                        label="Accept"
-                        onPress={async () => {
-                          const result = await accept.run(item._id);
-                          if (result) {
-                            navigation.navigate('Chat', {
-                              conversationId: result.conversationId,
-                              partnerName: item.sender.name,
-                              partnerId: item.sender._id,
-                            });
-                          }
-                        }}
-                        disabled={busy}
-                        fullWidth={false}
-                        style={{ flex: 1 }}
-                      />
-                      <Button
-                        label="Decline"
-                        variant="ghost"
-                        onPress={() => void reject.run(item._id)}
-                        disabled={busy}
-                        fullWidth={false}
-                        style={{ flex: 1 }}
-                      />
+                      <View style={{ flex: 1 }}>
+                        <Button
+                          label="Decline"
+                          variant="secondary"
+                          size="md"
+                          onPress={() => void reject.run(item._id)}
+                          disabled={busy}
+                        />
+                      </View>
+                      <View style={{ flex: 1.4 }}>
+                        <Button
+                          label="Accept"
+                          variant="success"
+                          size="md"
+                          icon="checkmark"
+                          onPress={() => void accept.run(item)}
+                          loading={accept.pending}
+                          disabled={busy && !accept.pending}
+                        />
+                      </View>
                     </Row>
                   ) : (
                     <Button
                       label="Withdraw request"
-                      variant="ghost"
+                      variant="secondary"
+                      size="md"
                       onPress={() => void cancel.run(item._id)}
                       disabled={busy}
-                      fullWidth={false}
                     />
                   )
-                ) : item.status === 'ACCEPTED' ? (
-                  <Body small muted>
-                    Accepted — find them under Chats.
-                  </Body>
                 ) : null
               }
             />
           )}
         />
       )}
+
+      {celebration ? (
+        <ConnectionCelebration
+          visible
+          me={{ name: user?.name ?? 'You', profileImage: user?.profileImage }}
+          partner={{
+            name: celebration.request.sender.name,
+            profileImage: celebration.request.sender.profileImage,
+          }}
+          skill={celebration.request.skill.name}
+          onClose={() => setCelebration(null)}
+          onMessage={() => {
+            const { request, conversationId } = celebration;
+            setCelebration(null);
+            navigation.navigate('Chat', {
+              conversationId,
+              partnerName: request.sender.name,
+              partnerId: request.sender._id,
+            });
+          }}
+        />
+      ) : null}
     </Screen>
   );
 }

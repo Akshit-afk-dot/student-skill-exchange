@@ -21,6 +21,7 @@ import { useAction, useAsync } from '../hooks/useAsync';
 import { useTheme } from '../theme';
 import type { SessionMode } from '../types';
 import type { RootStackParamList } from '../navigation/types';
+import { haptics } from '../haptics';
 
 const DURATIONS = [30, 45, 60, 90, 120];
 const TIMES = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
@@ -92,6 +93,7 @@ export function ScheduleSessionScreen() {
       ...(mode === 'ONLINE' ? { meetingLink: meetingLink.trim() } : { location: location.trim() }),
       ...(notes.trim() ? { notes: notes.trim() } : {}),
     });
+    haptics.sent();
     navigation.replace('SessionDetails', { sessionId: session._id });
     return session;
   });
@@ -172,13 +174,13 @@ export function ScheduleSessionScreen() {
                     borderColor: active ? t.colors.primary : t.colors.border,
                   }}
                 >
-                  <Caption style={{ color: active ? t.colors.textInverse : t.colors.textMuted }}>
+                  <Caption style={{ color: active ? t.colors.onPrimary : t.colors.textMuted }}>
                     {d.format('ddd')}
                   </Caption>
-                  <Body style={{ color: active ? t.colors.textInverse : t.colors.text }}>
+                  <Body style={{ color: active ? t.colors.onPrimary : t.colors.text }}>
                     {d.format('D')}
                   </Body>
-                  <Caption style={{ color: active ? t.colors.textInverse : t.colors.textMuted }}>
+                  <Caption style={{ color: active ? t.colors.onPrimary : t.colors.textMuted }}>
                     {d.format('MMM')}
                   </Caption>
                 </Pressable>

@@ -23,6 +23,7 @@ import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
 import { formatDuration, formatSessionWhen, statusLabel, statusTone } from '../utils/format';
 import type { RootStackParamList } from '../navigation/types';
+import { haptics } from '../haptics';
 
 export function SessionDetailsScreen() {
   const t = useTheme();
@@ -34,12 +35,16 @@ export function SessionDetailsScreen() {
 
   const confirm = useAction(async () => {
     await sessionsApi.confirm(sessionId);
+    haptics.success();
     state.reload();
   });
 
   const complete = useAction(async () => {
     const result = await sessionsApi.complete(sessionId);
     state.reload();
+    // Finishing a session together is an achievement; marking your half is a plain success.
+    if (result.fullyCompleted) haptics.achievement();
+    else haptics.success();
     if (result.fullyCompleted) {
       Alert.alert('Session complete', 'You can now leave a rating.', [
         { text: 'Later', style: 'cancel' },
@@ -60,6 +65,7 @@ export function SessionDetailsScreen() {
 
   const cancel = useAction(async (reason: string) => {
     await sessionsApi.cancel(sessionId, reason);
+    haptics.reject();
     state.reload();
   });
 

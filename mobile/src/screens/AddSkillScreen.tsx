@@ -21,6 +21,7 @@ import { useTheme } from '../theme';
 import { LEVEL_LABEL } from '../utils/format';
 import { SKILL_LEVELS, type Skill, type SkillLevel } from '../types';
 import type { RootStackParamList } from '../navigation/types';
+import { haptics } from '../haptics';
 
 const PRIORITIES = [
   { value: 1, label: 'Nice to have' },
@@ -69,6 +70,7 @@ export function AddSkillScreen() {
       ...(description.trim() ? { description: description.trim() } : {}),
       ...(!isTeaching ? { priority } : {}),
     });
+    haptics.success();
     navigation.goBack();
   });
 

@@ -1,103 +1,284 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback } from 'react';
-import { View } from 'react-native';
-import { gamification, matching, requests, sessions } from '../api/endpoints';
-import { MatchCard, SessionCard } from '../components/cards';
+import { ScrollView, View } from 'react-native';
+import { gamification, matching, notifications, requests, sessions } from '../api/endpoints';
+import { MATCH_PEEK_WIDTH, MatchPeek, SessionCard } from '../components/cards';
+import { FadeInView, PressableScale, Skeleton } from '../components/motion';
 import {
   Avatar,
   Banner,
-  Body,
+  Button,
   Caption,
-  Card,
   EmptyState,
-  Heading,
+  IconButton,
+  IconTile,
   Row,
   Screen,
   SectionHeader,
   StatTile,
+  Text,
   Title,
+  type Tone,
 } from '../components/ui';
-import { PressableScale, SkeletonList, Skeleton } from '../components/motion';
 import { useAsync } from '../hooks/useAsync';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
+import { formatDuration, formatSessionWhen, plural } from '../utils/format';
 import type { RootStackParamList } from '../navigation/types';
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+function greeting(now = new Date()): string {
+  const hour = now.getHours();
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+/**
+ * The one thing worth doing next, on the brand gradient. It changes with the student's
+ * situation, so the top of Home is always an answer to "what now?" rather than a banner
+ * that says the same thing every day.
+ */
+function NextUpCard({
+  overline,
+  title,
+  body,
+  action,
+  icon,
+  onPress,
+}: {
+  overline: string;
+  title: string;
+  body: string;
+  action: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress(): void;
+}) {
+  const t = useTheme();
+  return (
+    <FadeInView style={{ marginBottom: t.spacing.xl }}>
+      <LinearGradient
+        colors={t.gradients.hero}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[{ borderRadius: t.radius.xl, padding: t.spacing.xl, overflow: 'hidden' }, t.elevation(3)]}
+      >
+        {/* Two faint rings in the corner give the flat gradient some depth. */}
+        <View
+          style={{
+            position: 'absolute',
+            right: -60,
+            top: -60,
+            width: 200,
+            height: 200,
+            borderRadius: 100,
+            borderWidth: 28,
+            borderColor: 'rgba(255,255,255,0.08)',
+          }}
+        />
+        <View
+          style={{
+            position: 'absolute',
+            right: 28,
+            top: 26,
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            backgroundColor: 'rgba(255,255,255,0.16)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name={icon} size={22} color="#FFFFFF" />
+        </View>
+
+        <Text
+          style={{
+            color: 'rgba(255,255,255,0.86)',
+            fontSize: 11.5,
+            lineHeight: 15,
+            fontWeight: '700',
+            letterSpacing: 0.9,
+            textTransform: 'uppercase',
+            marginRight: 60,
+          }}
+        >
+          {overline}
+        </Text>
+        <Text
+          numberOfLines={2}
+          style={{ color: '#FFFFFF', fontSize: 22, lineHeight: 28, fontWeight: '800', marginTop: 6, marginRight: 56 }}
+        >
+          {title}
+        </Text>
+        <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14.5, lineHeight: 21, marginTop: 6 }}>{body}</Text>
+        <Button
+          label={action}
+          variant="inverse"
+          size="md"
+          iconRight="arrow-forward"
+          fullWidth={false}
+          onPress={onPress}
+          style={{ marginTop: t.spacing.lg }}
+        />
+      </LinearGradient>
+    </FadeInView>
+  );
+}
+
+/** A shortcut: a tinted icon over a short label. Four of these make the quick-actions row. */
+function Shortcut({
+  icon,
+  label,
+  tone,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  tone: Tone;
+  onPress(): void;
+}) {
+  const t = useTheme();
+  return (
+    <PressableScale
+      onPress={onPress}
+      scaleTo={0.92}
+      accessibilityLabel={label}
+      style={{ flex: 1, alignItems: 'center', gap: 7, paddingVertical: 4 }}
+    >
+      <IconTile icon={icon} tone={tone} size={52} />
+      <Text numberOfLines={1} style={{ fontSize: 12.5, lineHeight: 17, fontWeight: '600', color: t.colors.text }}>
+        {label}
+      </Text>
+    </PressableScale>
+  );
+}
+
+function HomeSkeleton() {
+  const t = useTheme();
+  // Mirrors the real layout, so loading reads as "almost there" rather than "stuck".
+  return (
+    <Screen scroll>
+      <Row style={{ justifyContent: 'space-between', marginBottom: t.spacing.xl }}>
+        <View style={{ gap: 8, flex: 1 }}>
+          <Skeleton width="34%" height={13} />
+          <Skeleton width="52%" height={26} />
+        </View>
+        <Skeleton width={44} height={44} radius={22} />
+      </Row>
+      <Skeleton height={190} radius={t.radius.xl} style={{ marginBottom: t.spacing.xl }} />
+      <Row gap={t.spacing.sm} style={{ marginBottom: t.spacing.xl }}>
+        <Skeleton width="31%" height={108} radius={t.radius.lg} />
+        <Skeleton width="31%" height={108} radius={t.radius.lg} />
+        <Skeleton width="31%" height={108} radius={t.radius.lg} />
+      </Row>
+      <Skeleton width="40%" height={20} style={{ marginBottom: t.spacing.md }} />
+      <Row gap={t.spacing.md}>
+        <Skeleton width={MATCH_PEEK_WIDTH} height={210} radius={t.radius.lg} />
+        <Skeleton width={MATCH_PEEK_WIDTH} height={210} radius={t.radius.lg} />
+      </Row>
+    </Screen>
+  );
+}
 
 export function HomeScreen() {
   const t = useTheme();
   const { user } = useAuth();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<Nav>();
 
   const load = useCallback(
     async () =>
       Promise.all([
-        matching.recommendations({ limit: 3 }),
+        matching.recommendations({ limit: 8 }),
         sessions.list({ when: 'upcoming', page: 1 }),
         requests.pendingCount(),
         gamification.analytics(),
+        // A badge is a nicety; failing to count must not fail the page.
+        notifications.unreadCount().catch(() => ({ count: 0 })),
       ]),
     [],
   );
 
   const state = useAsync(load, []);
 
-  if (state.loading) {
-    // A skeleton that mirrors the real layout reads as "almost there"; a centred
-    // spinner on an empty screen reads as "stuck".
-    return (
-      <Screen scroll>
-        <Skeleton width="45%" height={26} style={{ marginBottom: 6 }} />
-        <Skeleton width="28%" height={13} style={{ marginBottom: t.spacing.xl }} />
-        <Row gap={t.spacing.sm} style={{ marginBottom: t.spacing.xl }}>
-          <Skeleton height={84} radius={18} />
-          <Skeleton height={84} radius={18} />
-          <Skeleton height={84} radius={18} />
-        </Row>
-        <SkeletonList count={2} lines={2} />
-      </Screen>
-    );
-  }
+  if (state.loading) return <HomeSkeleton />;
 
-  const [matches, upcoming, pending, analytics] = state.data ?? [];
+  const [matches, upcoming, pending, analytics, unread] = state.data ?? [];
   const firstName = user?.name.split(' ')[0] ?? 'there';
   const hasSkills = (analytics?.skillsTeaching ?? 0) + (analytics?.skillsLearning ?? 0) > 0;
+  const pendingCount = pending?.count ?? 0;
+  const nextSession = upcoming?.items[0];
+
+  let nextUp: Parameters<typeof NextUpCard>[0];
+  if (!hasSkills) {
+    nextUp = {
+      overline: 'Start here',
+      title: 'Add your skills',
+      body: 'Tell us what you can teach and what you want to learn. Matches appear the moment you do.',
+      action: 'Add skills',
+      icon: 'sparkles',
+      onPress: () => navigation.navigate('MySkills'),
+    };
+  } else if (pendingCount > 0) {
+    nextUp = {
+      overline: 'Waiting for you',
+      title: `${plural(pendingCount, 'student')} ${pendingCount === 1 ? 'wants' : 'want'} to learn from you`,
+      body: 'Accept to open a chat and start planning a session.',
+      action: 'Review requests',
+      icon: 'mail-unread',
+      onPress: () => navigation.navigate('LearningRequests'),
+    };
+  } else if (nextSession) {
+    const partner =
+      nextSession.teacher._id === user?.id ? nextSession.learner.name : nextSession.teacher.name;
+    nextUp = {
+      overline: `Next session · ${formatSessionWhen(nextSession.scheduledAt)}`,
+      title: `${nextSession.skill.name} with ${partner.split(' ')[0]}`,
+      body: `${formatDuration(nextSession.durationMinutes)}, ${nextSession.mode === 'ONLINE' ? 'online' : 'in person'}.`,
+      action: 'Open session',
+      icon: 'calendar',
+      onPress: () => navigation.navigate('SessionDetails', { sessionId: nextSession._id }),
+    };
+  } else {
+    nextUp = {
+      overline: 'Keep going',
+      title: 'Find someone to learn from',
+      body: 'Browse students by skill, or send a request to one of your matches below.',
+      action: 'Explore',
+      icon: 'compass',
+      onPress: () => navigation.navigate('Tabs', { screen: 'ExploreTab' }),
+    };
+  }
+
+  // The hero already shows the next session; the list below starts after it.
+  const moreSessions = (upcoming?.items ?? []).slice(nextUp.icon === 'calendar' ? 1 : 0, 3);
 
   return (
     <Screen scroll refreshing={state.refreshing} onRefresh={state.refresh}>
       <Row style={{ justifyContent: 'space-between', marginBottom: t.spacing.xl }}>
         <View style={{ flex: 1 }}>
-          <Caption>Welcome back</Caption>
+          <Caption style={{ fontSize: 14, lineHeight: 19 }}>{greeting()}</Caption>
           <Title numberOfLines={1}>{firstName}</Title>
         </View>
-        <Row gap={t.spacing.md}>
-          <PressableScale
+        <Row gap={t.spacing.sm}>
+          <IconButton
+            icon="notifications-outline"
+            accessibilityLabel={
+              (unread?.count ?? 0) > 0 ? `Notifications, ${unread?.count} unread` : 'Notifications'
+            }
+            badge={(unread?.count ?? 0) > 0}
             onPress={() => navigation.navigate('Notifications')}
-            accessibilityLabel="Notifications"
-            scaleTo={0.9}
-          >
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: t.colors.surface,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: t.colors.border,
-              }}
-            >
-              <Ionicons name="notifications-outline" size={20} color={t.colors.text} />
-            </View>
-          </PressableScale>
+          />
           <PressableScale
             onPress={() => navigation.navigate('Tabs', { screen: 'ProfileTab' })}
             accessibilityLabel="Your profile"
             scaleTo={0.9}
           >
-            <Avatar name={user?.name ?? '?'} uri={user?.profileImage} size={40} />
+            <Avatar name={user?.name ?? '?'} uri={user?.profileImage} size={44} />
           </PressableScale>
         </Row>
       </Row>
@@ -111,93 +292,93 @@ export function HomeScreen() {
         />
       ) : null}
 
-      {!hasSkills ? (
-        <Card style={{ marginBottom: t.spacing.lg, backgroundColor: t.colors.primarySoft }}>
-          <Heading style={{ color: t.colors.primary }}>Add your skills first</Heading>
-          <Body style={{ marginTop: 4, color: t.colors.primary }}>
-            Matching needs to know what you can teach and what you want to learn.
-          </Body>
-          <Row style={{ marginTop: t.spacing.md }}>
-            <PressableScale
-              onPress={() => navigation.navigate('MySkills')}
-              haptic="press"
-              accessibilityLabel="Add skills"
-              style={{
-                backgroundColor: t.colors.primary,
-                paddingHorizontal: t.spacing.lg,
-                paddingVertical: 11,
-                borderRadius: t.radius.md,
-              }}
-            >
-              <Body style={{ color: t.colors.textInverse, fontWeight: '600' }}>Add skills</Body>
-            </PressableScale>
-          </Row>
-        </Card>
-      ) : null}
+      <NextUpCard {...nextUp} />
 
-      <Row gap={t.spacing.sm} style={{ marginBottom: t.spacing.xl }}>
+      <Row gap={t.spacing.sm} style={{ marginBottom: t.spacing.xl, alignItems: 'stretch' }}>
         <StatTile
           index={0}
           label="Sessions taught"
           value={analytics?.sessionsTaught ?? 0}
-          icon="school-outline"
+          icon="school"
+          tone="teach"
         />
         <StatTile
           index={1}
           label="Hours learned"
           value={analytics?.hoursLearned ?? 0}
-          icon="book-outline"
-          tone="accent"
+          icon="book"
+          tone="learn"
         />
         <StatTile
           index={2}
           label="Day streak"
           value={analytics?.streakDays ?? 0}
-          icon="flame-outline"
+          icon="flame"
           tone="warning"
         />
       </Row>
 
-      {(pending?.count ?? 0) > 0 ? (
-        <Card
-          onPress={() => navigation.navigate('LearningRequests')}
-          style={{ marginBottom: t.spacing.xl }}
-        >
-          <Row style={{ justifyContent: 'space-between' }}>
-            <Row gap={t.spacing.md}>
-              <View
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 19,
-                  backgroundColor: t.colors.warningSoft,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="mail-unread-outline" size={19} color={t.colors.warning} />
-              </View>
-              <View>
-                <Heading>
-                  {pending?.count} learning {pending?.count === 1 ? 'request' : 'requests'}
-                </Heading>
-                <Caption>Waiting for your answer</Caption>
-              </View>
-            </Row>
-            <Ionicons name="chevron-forward" size={18} color={t.colors.textMuted} />
-          </Row>
-        </Card>
-      ) : null}
+      <Row style={{ marginBottom: t.spacing.xl }}>
+        <Shortcut icon="layers" label="My skills" tone="teach" onPress={() => navigation.navigate('MySkills')} />
+        <Shortcut icon="calendar" label="Calendar" tone="accent" onPress={() => navigation.navigate('Calendar')} />
+        <Shortcut
+          icon="trophy"
+          label="Rankings"
+          tone="warning"
+          onPress={() => navigation.navigate('Leaderboard')}
+        />
+        <Shortcut icon="ribbon" label="Badges" tone="learn" onPress={() => navigation.navigate('Badges')} />
+      </Row>
 
       <SectionHeader
-        title="Upcoming sessions"
-        actionLabel={upcoming && upcoming.items.length > 0 ? 'See all' : undefined}
-        onAction={() => navigation.navigate('MySessions')}
+        title="For you"
+        actionLabel={matches && matches.items.length > 0 ? 'See all' : undefined}
+        onAction={() => navigation.navigate('Tabs', { screen: 'MatchesTab' })}
       />
-      {upcoming && upcoming.items.length > 0 ? (
-        upcoming.items
-          .slice(0, 2)
-          .map((session, i) => (
+      {matches && matches.items.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={MATCH_PEEK_WIDTH + t.spacing.md}
+          decelerationRate="fast"
+          // Bleeds to the screen edges so cards slide in from off-screen, which says "more this way".
+          style={{ marginHorizontal: -t.spacing.page, marginBottom: t.spacing.xl }}
+          contentContainerStyle={{
+            paddingHorizontal: t.spacing.page,
+            paddingTop: 2,
+            paddingBottom: t.spacing.sm,
+            gap: t.spacing.md,
+          }}
+        >
+          {matches.items.map((match, i) => (
+            <MatchPeek
+              key={match.id}
+              index={i}
+              match={match}
+              onPress={() => navigation.navigate('StudentProfile', { userId: match.id })}
+            />
+          ))}
+        </ScrollView>
+      ) : (
+        <EmptyState
+          icon="people"
+          title="No matches yet"
+          message={
+            hasSkills
+              ? 'Nobody complements your skills right now. Add a few more, or check back soon.'
+              : 'Add what you can teach and what you want to learn, and matches will appear here.'
+          }
+          actionLabel={hasSkills ? 'Browse students' : 'Add skills'}
+          onAction={() =>
+            hasSkills ? navigation.navigate('Tabs', { screen: 'ExploreTab' }) : navigation.navigate('MySkills')
+          }
+        />
+      )}
+
+      {moreSessions.length > 0 ? (
+        <View>
+          <SectionHeader title="Coming up" actionLabel="See all" onAction={() => navigation.navigate('MySessions')} />
+          {moreSessions.map((session, i) => (
             <SessionCard
               key={session._id}
               index={i}
@@ -205,53 +386,9 @@ export function HomeScreen() {
               currentUserId={user?.id ?? ''}
               onPress={() => navigation.navigate('SessionDetails', { sessionId: session._id })}
             />
-          ))
-      ) : (
-        <Card style={{ marginBottom: t.spacing.lg }}>
-          <Body muted>Nothing scheduled. Once you connect with someone, book a session.</Body>
-        </Card>
-      )}
-
-      <View style={{ marginTop: t.spacing.lg }}>
-        <SectionHeader
-          title="Recommended for you"
-          actionLabel={matches && matches.items.length > 0 ? 'See all' : undefined}
-          onAction={() => navigation.navigate('Tabs', { screen: 'MatchesTab' })}
-        />
-        {matches && matches.items.length > 0 ? (
-          matches.items.map((match, i) => (
-            <MatchCard
-              key={match.id}
-              index={i}
-              match={match}
-              onPress={() => navigation.navigate('StudentProfile', { userId: match.id })}
-              onRequest={() =>
-                navigation.navigate('SendRequest', {
-                  userId: match.id,
-                  userName: match.name,
-                  ...(match.theyTeachYouWant[0] ? { skillId: match.theyTeachYouWant[0].id } : {}),
-                })
-              }
-            />
-          ))
-        ) : (
-          <EmptyState
-            icon="people-outline"
-            title="No matches yet"
-            message={
-              hasSkills
-                ? 'Nobody complements your skills right now. Try adding more skills or check back soon.'
-                : 'Add what you can teach and what you want to learn, and matches will appear here.'
-            }
-            actionLabel={hasSkills ? 'Browse students' : 'Add skills'}
-            onAction={() =>
-              hasSkills
-                ? navigation.navigate('Tabs', { screen: 'ExploreTab' })
-                : navigation.navigate('MySkills')
-            }
-          />
-        )}
-      </View>
+          ))}
+        </View>
+      ) : null}
     </Screen>
   );
 }

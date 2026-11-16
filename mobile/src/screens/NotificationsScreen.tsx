@@ -14,12 +14,12 @@ import {
   LoadingView,
   Row,
   Screen,
-  Title,
 } from '../components/ui';
 import { useAction, useAsync } from '../hooks/useAsync';
 import { useTheme } from '../theme';
 import { timeAgo } from '../utils/format';
 import type { RootStackParamList } from '../navigation/types';
+import { haptics } from '../haptics';
 
 type Tone = 'primary' | 'success' | 'warning' | 'danger';
 
@@ -46,6 +46,7 @@ export function NotificationsScreen() {
 
   const markAll = useAction(async () => {
     await notificationsApi.markAllRead();
+    haptics.success();
     state.reload();
   });
 
@@ -103,7 +104,7 @@ export function NotificationsScreen() {
     <Screen padded={false} edges={['top']}>
       <View style={{ padding: t.spacing.lg, paddingBottom: t.spacing.sm }}>
         <Row style={{ justifyContent: 'space-between' }}>
-          <Title>Notifications</Title>
+          <Body muted>{unread > 0 ? `${unread} unread` : 'All caught up'}</Body>
           {unread > 0 ? (
             <Pressable onPress={() => void markAll.run()} hitSlop={8} accessibilityRole="button">
               <Body small style={{ color: t.colors.primary, fontWeight: '600' }}>

@@ -18,6 +18,7 @@ import { useAction } from '../hooks/useAsync';
 import { useTheme } from '../theme';
 import type { ReportReason } from '../types';
 import type { RootStackParamList } from '../navigation/types';
+import { haptics } from '../haptics';
 
 const REASONS: Array<{ value: ReportReason; label: string; hint: string }> = [
   { value: 'HARASSMENT', label: 'Harassment or abuse', hint: 'Threats, insults, or unwanted contact' },
@@ -51,6 +52,7 @@ export function ReportUserScreen() {
       reason,
       ...(description.trim() ? { description: description.trim() } : {}),
     });
+    haptics.sent();
     Alert.alert('Report submitted', result.message, [
       { text: 'OK', onPress: () => navigation.goBack() },
     ]);

@@ -12,12 +12,11 @@ import {
   LoadingView,
   Row,
   Screen,
-  Title,
 } from '../components/ui';
 import { AnimatedListItem } from '../components/motion';
 import { useAction, useAsync } from '../hooks/useAsync';
 import { useTheme } from '../theme';
-import { haptics } from '../utils/haptics';
+import { haptics } from '../haptics';
 import type { BlockedStudent } from '../types';
 
 export function BlockedUsersScreen() {
@@ -49,8 +48,7 @@ export function BlockedUsersScreen() {
 
   return (
     <Screen scroll refreshing={state.refreshing} onRefresh={state.refresh}>
-      <Title>Blocked students</Title>
-      <Body muted style={{ marginTop: 4, marginBottom: t.spacing.lg }}>
+      <Body muted style={{ marginBottom: t.spacing.lg }}>
         You and the students you block cannot find, request or message each other. They are not
         told.
       </Body>

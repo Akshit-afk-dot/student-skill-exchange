@@ -16,13 +16,13 @@ import {
   Row,
   Screen,
   SectionHeader,
-  Title,
 } from '../components/ui';
 import { useAction, useAsync } from '../hooks/useAsync';
 import { useTheme } from '../theme';
 import { LEVEL_LABEL } from '../utils/format';
 import type { UserSkillEntry } from '../types';
 import type { RootStackParamList } from '../navigation/types';
+import { haptics } from '../haptics';
 
 export function MySkillsScreen() {
   const t = useTheme();
@@ -39,6 +39,7 @@ export function MySkillsScreen() {
 
   const remove = useAction(async (id: string) => {
     await skillsApi.remove(id);
+    haptics.reject();
     state.reload();
   });
 
@@ -94,8 +95,7 @@ export function MySkillsScreen() {
 
   return (
     <Screen scroll refreshing={state.refreshing} onRefresh={state.refresh}>
-      <Title>My skills</Title>
-      <Body muted style={{ marginTop: 4, marginBottom: t.spacing.lg }}>
+      <Body muted style={{ marginBottom: t.spacing.lg }}>
         The matching algorithm works from these two lists.
       </Body>
 

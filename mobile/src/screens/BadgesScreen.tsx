@@ -10,7 +10,6 @@ import {
   LoadingView,
   Row,
   Screen,
-  Title,
 } from '../components/ui';
 import { useAsync } from '../hooks/useAsync';
 import { useTheme } from '../theme';
@@ -38,8 +37,7 @@ export function BadgesScreen() {
 
   return (
     <Screen scroll refreshing={state.refreshing} onRefresh={state.refresh}>
-      <Title>Achievements</Title>
-      <Body muted style={{ marginTop: 4, marginBottom: t.spacing.lg }}>
+      <Body muted style={{ marginBottom: t.spacing.lg }}>
         {plural(earned.length, 'badge')} earned of {badges.length}.
       </Body>
 

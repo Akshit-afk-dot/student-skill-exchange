@@ -1,129 +1,225 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useRef, useState } from 'react';
-import { Dimensions, FlatList, View, type ViewToken } from 'react-native';
-import { Body, Button, Screen, Title } from '../../components/ui';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect } from 'react';
+import { View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { Text } from '../../components/Text';
+import { Body, Button, Display, Screen } from '../../components/ui';
 import { useTheme } from '../../theme';
 import type { AuthStackParamList } from '../../navigation/types';
 
-interface Slide {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  body: string;
-}
-
-const SLIDES: Slide[] = [
-  {
-    icon: 'swap-horizontal',
-    title: 'Trade skills, not money',
-    body: 'You know Python. Someone else knows Photoshop. Teach each other instead of paying for two courses.',
-  },
-  {
-    icon: 'sparkles',
-    title: 'Matched both ways',
-    body: 'We look for students whose learning goals fit what you teach — and whose teaching fits what you want to learn.',
-  },
-  {
-    icon: 'calendar',
-    title: 'Chat, schedule, learn',
-    body: 'Message your match, book a session that suits you both, and build a rating other students can trust.',
-  },
+/**
+ * Skills drifting around the exchange mark. Violet ones are taught, orange ones learned:
+ * the same two colours the rest of the app uses for exactly that, introduced here.
+ */
+const FLOATING: ReadonlyArray<{
+  label: string;
+  kind: 'teach' | 'learn';
+  /** Position as a fraction of the stage, measured to the chip's centre. */
+  x: number;
+  y: number;
+}> = [
+  { label: 'Python', kind: 'teach', x: 0.2, y: 0.14 },
+  { label: 'Guitar', kind: 'learn', x: 0.79, y: 0.2 },
+  { label: 'Figma', kind: 'learn', x: 0.14, y: 0.5 },
+  { label: 'Public speaking', kind: 'teach', x: 0.76, y: 0.77 },
+  { label: 'Spanish', kind: 'teach', x: 0.22, y: 0.84 },
+  { label: 'Photography', kind: 'learn', x: 0.68, y: 0.97 },
 ];
 
-const { width } = Dimensions.get('window');
+const STAGE_HEIGHT = 330;
 
+/** One skill chip: pops in, then bobs gently for as long as the screen is open. */
+function FloatingSkill({
+  label,
+  kind,
+  x,
+  y,
+  index,
+}: {
+  label: string;
+  kind: 'teach' | 'learn';
+  x: number;
+  y: number;
+  index: number;
+}) {
+  const t = useTheme();
+  const reduceMotion = useReducedMotion();
+  const appear = useSharedValue(0);
+  const bob = useSharedValue(0);
+
+  useEffect(() => {
+    appear.value = withDelay(250 + index * 90, withSpring(1, t.motion.springs.bouncy));
+    if (reduceMotion) return;
+    // Different periods per chip, so they never move in step and look mechanical.
+    bob.value = withDelay(
+      index * 260,
+      withRepeat(
+        withTiming(1, { duration: 2400 + index * 280, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true,
+      ),
+    );
+  }, [appear, bob, index, reduceMotion, t.motion.springs.bouncy]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: appear.value,
+    transform: [{ translateY: (bob.value - 0.5) * 12 }, { scale: 0.6 + appear.value * 0.4 }],
+  }));
+
+  const dot = kind === 'teach' ? t.colors.primary : t.colors.learnVivid;
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          left: `${x * 100}%`,
+          top: `${y * 100}%`,
+          // Half the chip's rough size, so the anchor above is its centre.
+          marginLeft: -52,
+          marginTop: -19,
+          width: 104,
+          alignItems: 'center',
+        },
+        style,
+      ]}
+    >
+      <View
+        style={[
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 7,
+            backgroundColor: t.colors.surface,
+            borderRadius: t.radius.pill,
+            paddingHorizontal: 13,
+            height: 38,
+            borderWidth: 1,
+            borderColor: t.colors.border,
+          },
+          t.elevation(2),
+        ]}
+      >
+        <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: dot }} />
+        <Text
+          numberOfLines={1}
+          style={{ color: t.colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' }}
+        >
+          {label}
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+/** The centrepiece: the app's two-arrow mark, springing in over two soft halos. */
+function ExchangeMark() {
+  const t = useTheme();
+  const reduceMotion = useReducedMotion();
+  const appear = useSharedValue(0);
+  const breathe = useSharedValue(0);
+
+  useEffect(() => {
+    appear.value = withSpring(1, t.motion.springs.bouncy);
+    if (reduceMotion) return;
+    breathe.value = withRepeat(
+      withTiming(1, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+  }, [appear, breathe, reduceMotion, t.motion.springs.bouncy]);
+
+  const mark = useAnimatedStyle(() => ({ transform: [{ scale: 0.4 + appear.value * 0.6 }] }));
+  const outer = useAnimatedStyle(() => ({
+    opacity: appear.value * 0.5,
+    transform: [{ scale: 1 + breathe.value * 0.06 }],
+  }));
+  const inner = useAnimatedStyle(() => ({
+    opacity: appear.value * 0.8,
+    transform: [{ scale: 1 + (1 - breathe.value) * 0.05 }],
+  }));
+
+  const halo = {
+    position: 'absolute' as const,
+    backgroundColor: t.colors.primarySoft,
+  };
+
+  return (
+    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View style={[halo, { width: 250, height: 250, borderRadius: 125 }, outer]} />
+      <Animated.View style={[halo, { width: 186, height: 186, borderRadius: 93 }, inner]} />
+      <Animated.View style={[t.elevation(3), { borderRadius: 40 }, mark]}>
+        <LinearGradient
+          colors={t.gradients.hero}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            width: 124,
+            height: 124,
+            borderRadius: 40,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="swap-horizontal" size={62} color="#FFFFFF" />
+        </LinearGradient>
+      </Animated.View>
+    </View>
+  );
+}
+
+/**
+ * The first screen a new student sees.
+ *
+ * One screen, not a swipe-through tour: the idea fits in a headline, and every extra
+ * slide is a tap between someone and the app. The picture does the explaining.
+ */
 export function OnboardingScreen() {
   const t = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
-  const [index, setIndex] = useState(0);
-  // A horizontal list does not reliably give its items a height, so the space is measured
-  // and handed to each slide explicitly. Without this the content sits at the very top.
-  const [slideHeight, setSlideHeight] = useState<number | undefined>(undefined);
-  const listRef = useRef<FlatList<Slide>>(null);
-
-  // Kept in a ref: FlatList treats this callback as immutable after first render and
-  // warns if a new function identity is passed on re-render.
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    const first = viewableItems[0];
-    if (first?.index != null) setIndex(first.index);
-  }).current;
-
-  const isLast = index === SLIDES.length - 1;
-
-  function next() {
-    if (isLast) {
-      navigation.navigate('Register');
-      return;
-    }
-    listRef.current?.scrollToIndex({ index: index + 1, animated: true });
-  }
 
   return (
     <Screen padded={false} edges={['top', 'bottom']}>
-      <View style={{ flex: 1 }} onLayout={(e) => setSlideHeight(e.nativeEvent.layout.height)}>
-        <FlatList
-          ref={listRef}
-          data={SLIDES}
-          keyExtractor={(item) => item.title}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-          renderItem={({ item }) => (
-            <View
-              style={{
-                width,
-                height: slideHeight,
-                alignItems: 'center',
-                justifyContent: 'center',
-                paddingHorizontal: t.spacing.xl,
-                gap: t.spacing.lg,
-              }}
-            >
-              <View
-                style={{
-                  width: 108,
-                  height: 108,
-                  borderRadius: 54,
-                  backgroundColor: t.colors.primarySoft,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name={item.icon} size={50} color={t.colors.primary} />
-              </View>
-              <Title style={{ textAlign: 'center' }}>{item.title}</Title>
-              <Body muted style={{ textAlign: 'center', lineHeight: 22 }}>
-                {item.body}
-              </Body>
-            </View>
-          )}
-        />
-      </View>
-
-      <View style={{ padding: t.spacing.xl, gap: t.spacing.md }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: t.spacing.sm }}>
-          {SLIDES.map((slide, i) => (
-            <View
-              key={slide.title}
-              style={{
-                width: i === index ? 20 : 7,
-                height: 7,
-                borderRadius: 4,
-                backgroundColor: i === index ? t.colors.primary : t.colors.border,
-              }}
-            />
+      <View
+        style={{ flex: 1, justifyContent: 'center' }}
+        // Decorative: a screen reader should go straight to the headline.
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <View style={{ height: STAGE_HEIGHT, marginHorizontal: t.spacing.lg, justifyContent: 'center' }}>
+          <ExchangeMark />
+          {FLOATING.map((skill, index) => (
+            <FloatingSkill key={skill.label} index={index} {...skill} />
           ))}
         </View>
+      </View>
 
-        <Button label={isLast ? 'Create an account' : 'Next'} onPress={next} />
-        <Button
-          label="I already have an account"
-          variant="ghost"
-          onPress={() => navigation.navigate('Login')}
-        />
+      <View style={{ paddingHorizontal: t.spacing.page, paddingBottom: t.spacing.xl }}>
+        <Display style={{ textAlign: 'center' }}>Trade skills,{'\n'}not money</Display>
+        <Body muted style={{ textAlign: 'center', marginTop: t.spacing.md, marginBottom: t.spacing.xl }}>
+          Teach what you know. Learn what you don't. Students helping students, with no fees.
+        </Body>
+
+        <View style={{ gap: t.spacing.md }}>
+          <Button label="Get started" onPress={() => navigation.navigate('Register')} />
+          <Button
+            label="I already have an account"
+            variant="ghost"
+            onPress={() => navigation.navigate('Login')}
+          />
+        </View>
       </View>
     </Screen>
   );

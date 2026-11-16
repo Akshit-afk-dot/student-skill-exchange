@@ -132,7 +132,7 @@ export function CalendarScreen() {
                     small
                     style={{
                       color: isSelected
-                        ? t.colors.textInverse
+                        ? t.colors.onPrimary
                         : isToday
                           ? t.colors.primary
                           : t.colors.text,

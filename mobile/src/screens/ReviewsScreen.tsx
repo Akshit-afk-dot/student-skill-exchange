@@ -14,7 +14,6 @@ import {
   Row,
   Screen,
   StarRating,
-  Title,
 } from '../components/ui';
 import { useAsync } from '../hooks/useAsync';
 import { useTheme } from '../theme';
@@ -31,8 +30,7 @@ export function ReviewsScreen() {
   return (
     <Screen padded={false} edges={['top']}>
       <View style={{ padding: t.spacing.lg, paddingBottom: t.spacing.sm }}>
-        <Title>Reviews</Title>
-        <Body muted style={{ marginTop: 4 }}>
+        <Body muted>
           What students say about {userName}.
         </Body>
       </View>

@@ -15,7 +15,6 @@ import {
   Row,
   Screen,
   StarRating,
-  Title,
 } from '../components/ui';
 import { useAction, useAsync } from '../hooks/useAsync';
 import { useTheme } from '../theme';
@@ -48,8 +47,7 @@ export function ConnectionsScreen() {
   return (
     <Screen padded={false} edges={['top']}>
       <View style={{ padding: t.spacing.lg, paddingBottom: t.spacing.sm }}>
-        <Title>Connections</Title>
-        <Body muted style={{ marginTop: 4 }}>
+        <Body muted>
           Students you have an accepted exchange with.
         </Body>
       </View>
