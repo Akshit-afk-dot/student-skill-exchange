@@ -4,7 +4,7 @@ import { POINTS } from '../../types/domain';
 import { ApiError } from '../../utils/errors';
 import { paginate, type Paginated } from '../../utils/pagination';
 import { awardPoints, evaluateBadges } from '../gamification/service';
-import { notify } from '../notifications/service';
+import { notify, resolveNotifications } from '../notifications/service';
 import { recalculateRating } from '../users/service';
 
 /** Window during which an author may still edit or withdraw their review. */
@@ -58,6 +58,9 @@ export async function createReview(
     }
     throw err;
   }
+
+  // The "rate your session" prompt has been answered.
+  await resolveNotifications(reviewerId, ['SESSION_COMPLETED'], { sessionId: String(session._id) });
 
   await recalculateRating(revieweeId);
   await awardPoints(reviewerId, POINTS.REVIEW_GIVEN);

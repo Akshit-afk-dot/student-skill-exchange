@@ -27,21 +27,24 @@ import type { RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-/** Each seeded category gets a picture and a tint, so the grid can be scanned by shape. */
-const CATEGORY_LOOK: Record<string, { icon: keyof typeof Ionicons.glyphMap; tone: Tone }> = {
-  Programming: { icon: 'code-slash', tone: 'teach' },
-  Design: { icon: 'color-palette', tone: 'learn' },
-  Academics: { icon: 'school', tone: 'accent' },
-  Languages: { icon: 'language', tone: 'success' },
-  Communication: { icon: 'mic', tone: 'warning' },
-  Business: { icon: 'briefcase', tone: 'teach' },
-  Music: { icon: 'musical-notes', tone: 'learn' },
-  Photography: { icon: 'camera', tone: 'accent' },
-  Sports: { icon: 'basketball', tone: 'success' },
+/**
+ * Each seeded category gets its own icon. They all share the brand tint: the picture tells
+ * them apart, and a rainbow of colours would compete with the ones that carry meaning.
+ */
+const CATEGORY_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  Programming: 'code-slash',
+  Design: 'color-palette',
+  Academics: 'school',
+  Languages: 'language',
+  Communication: 'mic',
+  Business: 'briefcase',
+  Music: 'musical-notes',
+  Photography: 'camera',
+  Sports: 'basketball',
 };
 
 function lookFor(name: string): { icon: keyof typeof Ionicons.glyphMap; tone: Tone } {
-  return CATEGORY_LOOK[name] ?? { icon: 'apps', tone: 'neutral' };
+  return { icon: CATEGORY_ICON[name] ?? 'apps', tone: 'primary' };
 }
 
 function CategoryTile({
@@ -70,8 +73,10 @@ function CategoryTile({
           gap: 8,
           paddingVertical: t.spacing.md,
           borderRadius: t.radius.lg,
-          backgroundColor: selected ? t.colors.primarySoft : t.colors.surface,
-          borderWidth: selected ? 1.5 : 1,
+          // Selected: the secondary container and a brand border, plus the bolder label,
+          // so the state shows by weight and outline, not by tint alone.
+          backgroundColor: selected ? t.colors.secondaryContainer : t.colors.surface,
+          borderWidth: selected ? 2 : 1,
           borderColor: selected ? t.colors.primary : t.colors.border,
         }}
       >
@@ -82,7 +87,7 @@ function CategoryTile({
             fontSize: 13,
             lineHeight: 17,
             fontWeight: selected ? '700' : '600',
-            color: selected ? t.colors.primary : t.colors.text,
+            color: selected ? t.colors.onSecondaryContainer : t.colors.textPrimary,
           }}
         >
           {category.name}
@@ -99,7 +104,7 @@ function CategorySkills({ category, onPick }: { category: SkillCategory; onPick(
   return (
     <FadeInView>
       <Card style={{ marginTop: t.spacing.md }}>
-        <Text style={{ fontSize: 15, lineHeight: 20, fontWeight: '700', color: t.colors.text, marginBottom: t.spacing.md }}>
+        <Text style={{ fontSize: 15, lineHeight: 20, fontWeight: '700', color: t.colors.textPrimary, marginBottom: t.spacing.md }}>
           {category.name} skills
         </Text>
         {state.loading ? (
@@ -216,12 +221,12 @@ export function ExploreScreen() {
                 >
                   <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <IconTile icon={look.icon} tone={look.tone} size={40} />
-                    <Text style={{ fontSize: 12, lineHeight: 16, fontWeight: '800', color: t.colors.textMuted }}>
+                    <Text style={{ fontSize: 12, lineHeight: 16, fontWeight: '800', color: t.colors.textSecondary }}>
                       #{i + 1}
                     </Text>
                   </Row>
                   <View>
-                    <Text numberOfLines={2} style={{ fontSize: 15.5, lineHeight: 21, fontWeight: '700', color: t.colors.text }}>
+                    <Text numberOfLines={2} style={{ fontSize: 15.5, lineHeight: 21, fontWeight: '700', color: t.colors.textPrimary }}>
                       {skill.name}
                     </Text>
                     <Caption style={{ marginTop: 2 }}>{plural(skill.teachCount, 'teacher')}</Caption>
@@ -245,7 +250,7 @@ export function ExploreScreen() {
                 key={skill.id}
                 label={`${skill.name} · ${skill.learnCount}`}
                 tone="learn"
-                icon="flame"
+                icon="trending-up"
                 onPress={() => openSkill(skill.id, skill.name)}
               />
             ))}

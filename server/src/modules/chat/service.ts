@@ -13,7 +13,7 @@ import type { MessageType } from '../../types/domain';
 import { ApiError } from '../../utils/errors';
 import { blockedByUser } from '../blocks/service';
 import { paginate, type Paginated } from '../../utils/pagination';
-import { notify } from '../notifications/service';
+import { notify, resolveNotifications } from '../notifications/service';
 
 /** Loads a conversation only if the caller is one of its two participants. */
 export async function assertMember(
@@ -207,7 +207,13 @@ export async function sendMessage(
     type: 'MESSAGE_RECEIVED',
     title: sender?.name ?? 'New message',
     body: preview,
-    data: { conversationId: String(conversation._id), screen: 'Chat' },
+    // Who it is from, so opening the alert lands in a chat that already knows its partner.
+    data: {
+      conversationId: String(conversation._id),
+      partnerId: senderId,
+      partnerName: sender?.name ?? '',
+      screen: 'Chat',
+    },
   });
 
   return populated;
@@ -230,19 +236,35 @@ export async function markConversationRead(
   );
 
   if (result.modifiedCount > 0) {
-    // Lets the sender's UI flip its ticks without polling.
-    emitToUser(String(otherParticipant(conversation, userId)), RT.MESSAGE_READ, {
-      conversationId: String(conversation._id),
-      readerId: userId,
-      count: result.modifiedCount,
-    });
+    const payload = { conversationId: String(conversation._id), readerId: userId, count: result.modifiedCount };
+    // The sender's UI flips its ticks without polling...
+    emitToUser(String(otherParticipant(conversation, userId)), RT.MESSAGE_READ, payload);
+    // ...and the reader's own unread badge drops, on every device they are signed in on.
+    emitToUser(userId, RT.MESSAGE_READ, payload);
   }
+
+  // Having read the chat, its "new message" and "request accepted" alerts are dealt with.
+  await resolveNotifications(userId, ['MESSAGE_RECEIVED', 'REQUEST_ACCEPTED'], {
+    conversationId: String(conversation._id),
+  });
 
   return result.modifiedCount;
 }
 
+/**
+ * The unread total behind the tab badge. Summed from the same per-conversation counters
+ * and the same conversation filter as the chat list, so the badge can never show a count
+ * the list does not (counting raw messages also counted conversations hidden by a block).
+ */
 export async function totalUnread(userId: string): Promise<number> {
-  return Message.countDocuments({ receiver: userId, readAt: null, deletedAt: null });
+  const hidden = await blockedByUser(userId);
+  const rows = await Conversation.find({ participants: { $all: [new Types.ObjectId(userId)], $nin: hidden } })
+    .select('unread')
+    .lean();
+  return rows.reduce((sum, row) => {
+    const counts = (row.unread ?? {}) as unknown as Record<string, number>;
+    return sum + (Number(counts[userId]) || 0);
+  }, 0);
 }
 
 /** Soft-deletes a message. Only the author may remove their own message. */

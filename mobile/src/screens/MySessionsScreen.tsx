@@ -51,7 +51,7 @@ export function MySessionsScreen() {
             accessibilityLabel="Calendar view"
             hitSlop={8}
           >
-            <Ionicons name="calendar-outline" size={23} color={t.colors.text} />
+            <Ionicons name="calendar-outline" size={23} color={t.colors.textPrimary} />
           </Pressable>
         </Row>
 

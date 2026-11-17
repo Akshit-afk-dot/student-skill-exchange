@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback } from 'react';
 import { View } from 'react-native';
 import { users as usersApi } from '../api/endpoints';
@@ -111,51 +110,49 @@ export function ProfileScreen() {
 
       {state.error ? <Banner tone="danger" text={state.error} /> : null}
 
-      {/* Identity card: a strip of the brand gradient with the avatar sitting across its edge. */}
-      <Card style={{ padding: 0, overflow: 'hidden' }} elevated={2}>
-        <LinearGradient colors={t.gradients.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ height: 76 }} />
-        <View style={{ paddingHorizontal: t.spacing.lg, paddingBottom: t.spacing.lg }}>
-          <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end', marginTop: -42 }}>
-            <View style={{ borderRadius: 50, borderWidth: 4, borderColor: t.colors.surface }}>
-              <Avatar name={user?.name ?? '?'} uri={user?.profileImage} size={84} />
-            </View>
-            <TextButton
-              label="View as others see it"
-              size={13.5}
-              onPress={() => user && navigation.navigate('StudentProfile', { userId: user.id })}
-              style={{ marginBottom: 4 }}
-            />
-          </Row>
-          <Row gap={6} style={{ marginTop: t.spacing.md }}>
-            <Text numberOfLines={1} style={[t.typography.title, { color: t.colors.text, flexShrink: 1 }]}>
-              {user?.name}
-            </Text>
-            {user?.emailVerified ? (
-              <Ionicons name="checkmark-circle" size={20} color={t.colors.primary} accessibilityLabel="Verified email" />
+      {/* Identity card. Neutral surface: the person is the content, colour is not needed. */}
+      <Card elevated={2}>
+        <Row gap={t.spacing.lg} style={{ alignItems: 'flex-start' }}>
+          <Avatar name={user?.name ?? '?'} uri={user?.profileImage} size={76} />
+          <View style={{ flex: 1 }}>
+            <Row gap={6}>
+              <Text numberOfLines={2} style={[t.typography.title, { color: t.colors.textPrimary, flexShrink: 1 }]}>
+                {user?.name}
+              </Text>
+              {user?.emailVerified ? (
+                <Ionicons name="checkmark-circle" size={20} color={t.colors.primary} accessibilityLabel="Verified email" />
+              ) : null}
+            </Row>
+            {user?.college ? (
+              <Body small muted style={{ marginTop: 2 }}>
+                {user.college}
+                {user.department ? ` · ${user.department}` : ''}
+                {user.year ? ` · Year ${user.year}` : ''}
+              </Body>
             ) : null}
-          </Row>
-          {user?.college ? (
-            <Body small muted style={{ marginTop: 2 }}>
-              {user.college}
-              {user.department ? ` · ${user.department}` : ''}
-              {user.year ? ` · Year ${user.year}` : ''}
-            </Body>
-          ) : null}
-          <Row style={{ marginTop: t.spacing.sm }}>
-            <StarRating value={profile?.rating.average ?? 0} count={profile?.rating.count ?? 0} />
-          </Row>
-          {user?.bio ? (
-            <Body small style={{ marginTop: t.spacing.md }}>
-              {user.bio}
-            </Body>
-          ) : null}
-        </View>
+            <Row style={{ marginTop: t.spacing.sm }}>
+              <StarRating value={profile?.rating.average ?? 0} count={profile?.rating.count ?? 0} />
+            </Row>
+          </View>
+        </Row>
+        {user?.bio ? (
+          <Body small style={{ marginTop: t.spacing.md }}>
+            {user.bio}
+          </Body>
+        ) : null}
+        <Divider spacing={t.spacing.md} />
+        <TextButton
+          label="View as others see it"
+          size={14}
+          onPress={() => user && navigation.navigate('StudentProfile', { userId: user.id })}
+          style={{ alignSelf: 'flex-start' }}
+        />
       </Card>
 
       {next ? (
-        <Card style={{ marginTop: t.spacing.lg }} tint={t.colors.primarySoft} elevated={0}>
+        <Card style={{ marginTop: t.spacing.lg }}>
           <Row style={{ justifyContent: 'space-between', marginBottom: t.spacing.sm }}>
-            <Text style={{ fontSize: 15, lineHeight: 20, fontWeight: '700', color: t.colors.text }}>
+            <Text style={{ fontSize: 15, lineHeight: 20, fontWeight: '700', color: t.colors.textPrimary }}>
               Profile {done} of {checklist.length} done
             </Text>
             <Caption style={{ color: t.colors.primary, fontWeight: '700' }}>
@@ -170,8 +167,8 @@ export function ProfileScreen() {
 
       <Row gap={t.spacing.sm} style={{ marginTop: t.spacing.lg, alignItems: 'stretch' }}>
         <StatTile index={0} label="Sessions taught" value={profile?.stats.sessionsTaught ?? 0} icon="school" tone="teach" />
-        <StatTile index={1} label="Points" value={profile?.stats.points ?? 0} icon="trophy" tone="success" />
-        <StatTile index={2} label="Day streak" value={profile?.stats.streakDays ?? 0} icon="flame" tone="warning" />
+        <StatTile index={1} label="Points" value={profile?.stats.points ?? 0} icon="trophy" tone="reward" />
+        <StatTile index={2} label="Day streak" value={profile?.stats.streakDays ?? 0} icon="flame" tone="reward" />
       </Row>
 
       <View style={{ marginTop: t.spacing.xl }}>
@@ -191,7 +188,7 @@ export function ProfileScreen() {
           </View>
           <Divider spacing={0} />
           <View style={{ gap: 7 }}>
-            <Overline style={{ color: t.colors.learn }}>I want to learn</Overline>
+            <Overline style={{ color: t.colors.tertiary }}>I want to learn</Overline>
             {(profile?.learns.length ?? 0) > 0 ? (
               <Row gap={6} style={{ flexWrap: 'wrap' }}>
                 {(profile?.learns ?? []).map((entry) => (
@@ -206,29 +203,27 @@ export function ProfileScreen() {
       </View>
 
       <LinkGroup title="Activity">
-        <ListRow icon="calendar" tone="accent" title="My sessions" onPress={() => navigation.navigate('MySessions')} />
+        <ListRow icon="calendar" title="My sessions" onPress={() => navigation.navigate('MySessions')} />
         <Divider spacing={0} />
-        <ListRow icon="mail" tone="learn" title="Learning requests" onPress={() => navigation.navigate('LearningRequests')} />
+        <ListRow icon="mail" title="Learning requests" onPress={() => navigation.navigate('LearningRequests')} />
         <Divider spacing={0} />
-        <ListRow icon="people" tone="primary" title="Connections" onPress={() => navigation.navigate('Connections')} />
+        <ListRow icon="people" title="Connections" onPress={() => navigation.navigate('Connections')} />
       </LinkGroup>
 
       <LinkGroup title="Progress">
-        <ListRow icon="stats-chart" tone="accent" title="Learning analytics" onPress={() => navigation.navigate('Analytics')} />
+        <ListRow icon="stats-chart" title="Learning analytics" onPress={() => navigation.navigate('Analytics')} />
         <Divider spacing={0} />
         <ListRow
           icon="ribbon"
-          tone="learn"
           title="Achievements"
           value={plural(profile?.badges.length ?? 0, 'badge')}
           onPress={() => navigation.navigate('Badges')}
         />
         <Divider spacing={0} />
-        <ListRow icon="trophy" tone="warning" title="Leaderboard" onPress={() => navigation.navigate('Leaderboard')} />
+        <ListRow icon="trophy" title="Leaderboard" onPress={() => navigation.navigate('Leaderboard')} />
         <Divider spacing={0} />
         <ListRow
           icon="star"
-          tone="warning"
           title="Reviews about me"
           value={String(profile?.rating.count ?? 0)}
           onPress={() => navigation.navigate('Reviews', { userId: user?.id ?? '', userName: user?.name ?? 'you' })}

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import { haptics } from '../haptics';
 import { useCountUp } from '../hooks/useCountUp';
 import { useTheme } from '../theme';
@@ -65,10 +65,9 @@ export function ScoreRing({
     };
   }, [felt, clamped, twoWay, delay]);
 
-  const gradientId = `ring-${twoWay ? 'two' : 'one'}-${size}`;
-  const [from, to] = twoWay
-    ? [t.colors.success, t.colors.accent]
-    : [t.dark ? '#B4ABFF' : '#7C6BFF', t.colors.primaryDeep];
+  // Solid, not a gradient: the arc is information (how full), so it uses one role colour
+  // with at least 3:1 against its track. Green means a two-way match everywhere in the app.
+  const arc = twoWay ? t.colors.success : t.colors.primary;
 
   return (
     <View
@@ -77,18 +76,11 @@ export function ScoreRing({
       accessibilityLabel={`${clamped} percent match${twoWay ? ', two-way exchange' : ''}`}
     >
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
-        <Defs>
-          <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={from} />
-            <Stop offset="1" stopColor={to} />
-          </LinearGradient>
-        </Defs>
-
         <Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={twoWay ? t.colors.successSoft : t.colors.primarySoft}
+          stroke={twoWay ? t.colors.successContainer : t.colors.primaryContainer}
           strokeWidth={stroke}
           fill="none"
         />
@@ -98,7 +90,7 @@ export function ScoreRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={`url(#${gradientId})`}
+          stroke={arc}
           strokeWidth={stroke}
           strokeLinecap="round"
           fill="none"
@@ -112,7 +104,7 @@ export function ScoreRing({
         <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
           <Text
             style={{
-              color: t.colors.text,
+              color: t.colors.textPrimary,
               fontSize: size * 0.3,
               lineHeight: size * 0.36,
               fontWeight: '800',
@@ -124,7 +116,7 @@ export function ScoreRing({
           </Text>
           <Text
             style={{
-              color: t.colors.textMuted,
+              color: t.colors.textSecondary,
               fontSize: Math.max(11, size * 0.15),
               fontWeight: '700',
             }}
@@ -135,7 +127,7 @@ export function ScoreRing({
         {label ? (
           <Text
             style={{
-              color: t.colors.textMuted,
+              color: t.colors.textSecondary,
               fontSize: Math.max(11, size * 0.11),
               fontWeight: '600',
               marginTop: -2,
@@ -180,10 +172,10 @@ export function ScoreBar({
           marginBottom: 6,
         }}
       >
-        <Text style={{ color: t.colors.text, fontSize: 14, lineHeight: 19, fontWeight: '600' }}>
+        <Text style={{ color: t.colors.textPrimary, fontSize: 14, lineHeight: 19, fontWeight: '600' }}>
           {label}
           {weight !== undefined ? (
-            <Text style={{ color: t.colors.textMuted, fontSize: 12, fontWeight: '500' }}>
+            <Text style={{ color: t.colors.textSecondary, fontSize: 12, fontWeight: '500' }}>
               {'  '}
               {Math.round(weight * 100)}% of score
             </Text>
@@ -191,7 +183,7 @@ export function ScoreBar({
         </Text>
         <Text
           style={{
-            color: t.colors.text,
+            color: t.colors.textPrimary,
             fontSize: 14,
             fontWeight: '700',
             fontVariant: ['tabular-nums'],
@@ -205,7 +197,7 @@ export function ScoreBar({
         style={{
           height: 8,
           borderRadius: 4,
-          backgroundColor: t.colors.surfaceAlt,
+          backgroundColor: t.colors.surfaceContainer,
           overflow: 'hidden',
         }}
       >

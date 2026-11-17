@@ -15,6 +15,8 @@ export const RT = {
   TYPING: 'chat:typing',
   PRESENCE: 'presence:update',
   NOTIFICATION: 'notification:new',
+  /** Some notifications were read or resolved by the server: refresh lists and badges. */
+  NOTIFICATION_READ: 'notification:read',
   REQUEST_NEW: 'request:new',
   REQUEST_UPDATED: 'request:updated',
   SESSION_UPDATED: 'session:updated',

@@ -56,7 +56,7 @@ export function DeleteAccountScreen() {
       <Card style={{ marginBottom: t.spacing.lg, gap: t.spacing.sm }}>
         {WHAT_GOES.map((line) => (
           <Row key={line} gap={t.spacing.sm} style={{ alignItems: 'flex-start' }}>
-            <Ionicons name="trash-outline" size={16} color={t.colors.danger} style={{ marginTop: 2 }} />
+            <Ionicons name="trash-outline" size={16} color={t.colors.error} style={{ marginTop: 2 }} />
             <Body small style={{ flex: 1 }}>
               {line}
             </Body>

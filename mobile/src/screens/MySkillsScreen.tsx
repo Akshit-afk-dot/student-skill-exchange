@@ -59,7 +59,7 @@ export function MySkillsScreen() {
   const teaches = state.data?.teaches ?? [];
   const learns = state.data?.learns ?? [];
 
-  const renderList = (entries: UserSkillEntry[], tone: 'primary' | 'warning') =>
+  const renderList = (entries: UserSkillEntry[], tone: 'teach' | 'learn') =>
     entries.map((entry) => (
       <Card key={entry._id} style={{ marginBottom: t.spacing.sm }}>
         <Row style={{ justifyContent: 'space-between' }}>
@@ -72,8 +72,8 @@ export function MySkillsScreen() {
                   {entry.yearsOfExperience} yr{entry.yearsOfExperience === 1 ? '' : 's'}
                 </Caption>
               ) : null}
-              {tone === 'warning' && entry.priority > 1 ? (
-                <Chip label={entry.priority === 3 ? 'Top priority' : 'Important'} tone="danger" />
+              {tone === 'learn' && entry.priority > 1 ? (
+                <Chip label={entry.priority === 3 ? 'Top priority' : 'Important'} tone="secondary" icon="flag" />
               ) : null}
             </Row>
             {entry.description ? (
@@ -87,7 +87,7 @@ export function MySkillsScreen() {
             hitSlop={10}
             style={{ padding: 4 }}
           >
-            <Ionicons name="trash-outline" size={19} color={t.colors.danger} />
+            <Ionicons name="trash-outline" size={19} color={t.colors.error} />
           </Pressable>
         </Row>
       </Card>
@@ -110,7 +110,7 @@ export function MySkillsScreen() {
           </Body>
         </Card>
       ) : (
-        renderList(teaches, 'primary')
+        renderList(teaches, 'teach')
       )}
       <Button
         label="Add a teaching skill"
@@ -126,7 +126,7 @@ export function MySkillsScreen() {
           <Body muted>Add what you want to learn so we can find someone to teach you.</Body>
         </Card>
       ) : (
-        renderList(learns, 'warning')
+        renderList(learns, 'learn')
       )}
       <Button
         label="Add a learning goal"

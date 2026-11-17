@@ -126,7 +126,7 @@ export function AddSkillScreen() {
                 paddingVertical: 11,
                 paddingHorizontal: t.spacing.md,
                 borderRadius: t.radius.sm,
-                backgroundColor: pressed ? t.colors.surfaceAlt : 'transparent',
+                backgroundColor: pressed ? t.colors.surfaceContainer : 'transparent',
               })}
             >
               <Row style={{ justifyContent: 'space-between' }}>

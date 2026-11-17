@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { View } from 'react-native';
 import { PopIn } from '../../components/motion';
 import { Body, IconButton, Title } from '../../components/ui';
@@ -32,10 +31,7 @@ export function AuthHeader({
         ) : null}
       </View>
       <PopIn>
-        <LinearGradient
-          colors={t.gradients.hero}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <View
           style={[
             {
               width: 56,
@@ -44,12 +40,13 @@ export function AuthHeader({
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: t.spacing.xl,
+              backgroundColor: t.colors.primary,
             },
             t.elevation(2),
           ]}
         >
-          <Ionicons name={icon} size={28} color="#FFFFFF" />
-        </LinearGradient>
+          <Ionicons name={icon} size={28} color={t.colors.onPrimary} />
+        </View>
       </PopIn>
       <Title>{title}</Title>
       <Body muted style={{ marginTop: t.spacing.xs }}>

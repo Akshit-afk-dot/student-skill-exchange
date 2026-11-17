@@ -1,4 +1,7 @@
-import { Platform, useColorScheme, type TextStyle, type ViewStyle } from 'react-native';
+import { createElement, createContext, useContext, useSyncExternalStore, type ReactNode } from 'react';
+import { Appearance, Platform, type TextStyle, type ViewStyle } from 'react-native';
+
+import { dark, light, type Palette } from './palette';
 
 /**
  * Design tokens.
@@ -7,160 +10,10 @@ import { Platform, useColorScheme, type TextStyle, type ViewStyle } from 'react-
  * have depth you can press into, motion uses springs rather than timed curves, and every
  * colour carries exactly one meaning. docs/DESIGN.md explains the reasoning.
  *
- * Two complete palettes rather than one with overrides, so every colour has a defined
- * value in both schemes and nothing can fall back to an unstyled default.
+ * Colours live in ./palette.ts as roles (primary, surface, textSecondary...). Screens use
+ * those roles and never a hex value, so the whole app changes together.
  */
-export interface Palette {
-  bg: string;
-  /** Slightly lifted background for headers and sticky bars. */
-  bgElevated: string;
-  surface: string;
-  /** Wells, input backgrounds and resting chips: one step down from `surface`. */
-  surfaceAlt: string;
-  border: string;
-  /** Hairline used over coloured surfaces where `border` would disappear. */
-  borderStrong: string;
-  text: string;
-  textMuted: string;
-  textInverse: string;
-
-  /** Brand violet. Also the colour of teaching: skills you offer. */
-  primary: string;
-  primaryDeep: string;
-  primarySoft: string;
-  /** The darker lip under a raised primary button. */
-  primaryEdge: string;
-  /** Text and icons placed on a primary fill. */
-  onPrimary: string;
-
-  /** Warm orange. The colour of learning: skills you want. Safe for small text on `learnSoft`. */
-  learn: string;
-  /** Brighter orange for fills and icons, where text contrast does not apply. */
-  learnVivid: string;
-  learnSoft: string;
-
-  /** Tertiary accent for variety in stats and illustrations. Carries no meaning of its own. */
-  accent: string;
-  accentSoft: string;
-
-  /** Green. Success, and a two-way match: an exchange that works in both directions. */
-  success: string;
-  successSoft: string;
-  successEdge: string;
-  onSuccess: string;
-
-  warning: string;
-  warningSoft: string;
-
-  danger: string;
-  dangerSoft: string;
-  dangerEdge: string;
-  onDanger: string;
-
-  /** The lip under a raised neutral (secondary) button. */
-  neutralEdge: string;
-
-  star: string;
-  overlay: string;
-  /** Base tint for skeleton placeholders and their moving highlight. */
-  skeleton: string;
-  skeletonHighlight: string;
-}
-
-/*
- * Neutrals are tinted toward the brand violet rather than left as pure greys, which is
- * what makes a white card and a violet button look like they belong to the same product.
- * Every text colour is checked against the surfaces it sits on: 4.5:1 for body text.
- */
-const light: Palette = {
-  bg: '#F7F6FC',
-  bgElevated: '#FFFFFF',
-  surface: '#FFFFFF',
-  surfaceAlt: '#F0EEF9',
-  border: '#E6E3F1',
-  borderStrong: '#CFCBE0',
-  text: '#16132A',
-  textMuted: '#625E7B',
-  textInverse: '#FFFFFF',
-
-  primary: '#5B4BE8',
-  primaryDeep: '#4334C8',
-  primarySoft: '#ECE9FF',
-  primaryEdge: '#3A2CB0',
-  onPrimary: '#FFFFFF',
-
-  learn: '#B8400A',
-  learnVivid: '#F97316',
-  learnSoft: '#FFF0E3',
-
-  accent: '#087070',
-  accentSoft: '#DDF5F4',
-
-  success: '#0A773C',
-  successSoft: '#DDF6E7',
-  successEdge: '#075A2D',
-  onSuccess: '#FFFFFF',
-
-  warning: '#A8580A',
-  warningSoft: '#FDF0D5',
-
-  danger: '#C32538',
-  dangerSoft: '#FDE7EA',
-  dangerEdge: '#981A29',
-  onDanger: '#FFFFFF',
-
-  neutralEdge: '#D8D4EA',
-
-  star: '#F5A524',
-  overlay: 'rgba(22, 19, 42, 0.55)',
-  skeleton: '#E9E6F3',
-  skeletonHighlight: '#F5F3FB',
-};
-
-const dark: Palette = {
-  bg: '#0D0B18',
-  bgElevated: '#151226',
-  surface: '#17142A',
-  surfaceAlt: '#221E3A',
-  border: '#2C2848',
-  borderStrong: '#433E66',
-  text: '#F2F0FB',
-  textMuted: '#A6A1C2',
-  textInverse: '#0D0B18',
-
-  primary: '#9A8FFF',
-  primaryDeep: '#7B6EF6',
-  primarySoft: '#272154',
-  primaryEdge: '#6457DC',
-  onPrimary: '#120F26',
-
-  learn: '#FFA366',
-  learnVivid: '#FF8A3D',
-  learnSoft: '#3A2110',
-
-  accent: '#3FD9D2',
-  accentSoft: '#0F3432',
-
-  success: '#4ADE94',
-  successSoft: '#11321F',
-  successEdge: '#2BA869',
-  onSuccess: '#06210F',
-
-  warning: '#F7B955',
-  warningSoft: '#3A2A0B',
-
-  danger: '#FF7887',
-  dangerSoft: '#3D1620',
-  dangerEdge: '#D4505F',
-  onDanger: '#2A0A10',
-
-  neutralEdge: '#120F22',
-
-  star: '#F7B955',
-  overlay: 'rgba(0, 0, 0, 0.7)',
-  skeleton: '#221E3A',
-  skeletonHighlight: '#2E2A4A',
-};
+export type { Palette };
 
 /*
  * One typeface, five weights. Each weight is its own font file, so a style picks a
@@ -297,23 +150,23 @@ export const motion = {
 } as const;
 
 /**
- * Elevation. iOS uses shadows, Android uses the native elevation property — applying
- * both everywhere produces a muddy double shadow on Android. Shadows are tinted with the
- * ink colour rather than pure black, which keeps them from looking dirty on a lilac page.
+ * Elevation. iOS uses shadows, Android uses the native elevation property; applying
+ * both everywhere produces a muddy double shadow on Android. In dark mode shadows barely
+ * read, so depth there comes mostly from raised surfaces being lighter.
  */
-export function elevation(level: 0 | 1 | 2 | 3, dark_: boolean): ViewStyle {
+export function elevation(level: 0 | 1 | 2 | 3, colors: Palette, dark_: boolean): ViewStyle {
   if (level === 0) return {};
 
   const spec = {
-    1: { radius: 8, offset: 2, opacity: dark_ ? 0.45 : 0.06, android: 2 },
-    2: { radius: 18, offset: 6, opacity: dark_ ? 0.55 : 0.09, android: 5 },
-    3: { radius: 32, offset: 14, opacity: dark_ ? 0.65 : 0.14, android: 10 },
+    1: { radius: 8, offset: 2, opacity: dark_ ? 0.4 : 0.06, android: 2 },
+    2: { radius: 18, offset: 6, opacity: dark_ ? 0.5 : 0.08, android: 4 },
+    3: { radius: 32, offset: 14, opacity: dark_ ? 0.6 : 0.12, android: 8 },
   }[level];
 
-  if (Platform.OS === 'android') return { elevation: spec.android, shadowColor: '#16132A' };
+  if (Platform.OS === 'android') return { elevation: spec.android, shadowColor: colors.shadow };
 
   return {
-    shadowColor: dark_ ? '#000000' : '#2A2456',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: spec.offset },
     shadowOpacity: spec.opacity,
     shadowRadius: spec.radius,
@@ -330,25 +183,10 @@ export interface Theme {
   motion: typeof motion;
   dark: boolean;
   elevation(level: 0 | 1 | 2 | 3): ViewStyle;
-  /** Two-stop gradients, ready to spread into LinearGradient's `colors`. */
-  gradients: {
-    primary: readonly [string, string];
-    /** The hero gradient: brand violet into a warmer magenta. Used once per screen at most. */
-    hero: readonly [string, string, string];
-    learn: readonly [string, string];
-    accent: readonly [string, string];
-    success: readonly [string, string];
-    /** Fades a list into the background behind a floating bar. */
-    fade: readonly [string, string];
-  };
 }
 
-/** Follows the device appearance setting; no in-app toggle to keep in sync. */
-export function useTheme(): Theme {
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+function buildTheme(isDark: boolean): Theme {
   const colors = isDark ? dark : light;
-
   return {
     colors,
     spacing,
@@ -358,17 +196,40 @@ export function useTheme(): Theme {
     typography: { ...typography, numeric: numericStyle },
     motion,
     dark: isDark,
-    elevation: (level) => elevation(level, isDark),
-    gradients: {
-      primary: [colors.primary, colors.primaryDeep],
-      // Fixed stops: this gradient always carries white text, in either scheme.
-      hero: ['#6D5BFF', '#5B4BE8', '#8B3FD9'],
-      learn: [colors.learnVivid, '#E8590C'],
-      accent: [colors.accent, colors.primary],
-      success: [colors.success, colors.accent],
-      fade: [`${colors.bg}00`, colors.bg],
-    },
+    elevation: (level) => elevation(level, colors, isDark),
   };
+}
+
+// Built once each. A stable object means hooks that depend on the theme (t.motion,
+// t.colors) do not re-run on every render, and switching scheme swaps one reference.
+const LIGHT_THEME = buildTheme(false);
+const DARK_THEME = buildTheme(true);
+
+/*
+ * One subscription to the device appearance, for the whole app. Per-component colour-scheme
+ * hooks each keep their own copy, and on web those copies were seen to disagree after a
+ * live switch (the navigator stayed dark while the screen went light). Reading the system
+ * value through a single store means every screen always agrees.
+ */
+function subscribe(onChange: () => void): () => void {
+  const subscription = Appearance.addChangeListener(() => onChange());
+  return () => subscription.remove();
+}
+function isDarkNow(): boolean {
+  return Appearance.getColorScheme() === 'dark';
+}
+
+const ThemeContext = createContext<Theme | null>(null);
+
+/** Follows the device appearance, including changes while the app is open (Auto mode). */
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const isDark = useSyncExternalStore(subscribe, isDarkNow, isDarkNow);
+  return createElement(ThemeContext.Provider, { value: isDark ? DARK_THEME : LIGHT_THEME }, children);
+}
+
+/** The current theme. Outside the provider it falls back to the device setting. */
+export function useTheme(): Theme {
+  return useContext(ThemeContext) ?? (isDarkNow() ? DARK_THEME : LIGHT_THEME);
 }
 
 export const palettes = { light, dark };

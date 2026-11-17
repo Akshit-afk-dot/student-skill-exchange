@@ -2,7 +2,7 @@
 
 How the Skill Exchange app looks, moves and feels, and the rules that keep it that way. The
 research behind these choices is in [DESIGN-RESEARCH.md](DESIGN-RESEARCH.md). The values live in
-code (`mobile/src/theme/index.ts`, `mobile/src/haptics/`), so this page explains *why*, and
+code (`mobile/src/theme/palette.ts` and `index.ts`, `mobile/src/haptics/`), so this page explains *why*, and
 the code is the source of truth for exact numbers.
 
 ## The idea
@@ -12,20 +12,126 @@ move on springs, not timers. Every meaningful moment has a matching feel in the 
 feel is choreographed with the motion, not fired at random. The two biggest moments in the app,
 seeing how well you match someone and connecting with them, are designed as events.
 
-## Colour carries meaning
+## Colour
 
-Each accent colour means one thing, everywhere. If a colour appears, it is saying that thing.
+### Principles
 
-| Colour | Means | Where |
-|---|---|---|
-| Violet (`primary`) | Teach, and the brand | Skills you teach, primary buttons, active tab |
-| Orange (`learn`) | Learn | Skills you want, "You learn" labels |
-| Green (`success`) | Success, and two-way match | Accept buttons, two-way ribbons and rings, ticks |
-| Red (`danger`) | Destructive or error | Delete, block, error banners |
+Colour is applied by **role**, never by value. Every colour comes from
+[`mobile/src/theme/palette.ts`](../mobile/src/theme/palette.ts), so a screen asks for
+`primary` or `textSecondary` and never for a hex code. The roles follow Material 3's colour
+system, the platform guidance this was built from:
 
-Light and dark palettes are both complete, and every text-on-fill pair passes WCAG AA (4.5:1),
-checked by script. Text on a coloured fill uses `onPrimary` / `onSuccess` / `onDanger`, never a
-hard-coded white, because the dark palette's fills are light.
+- **Restraint.** Most of every screen is neutral surface. Vivid colour is kept for the one
+  action that matters on a screen and for information. A raised primary button is usually the
+  only saturated thing in view.
+- **One meaning per colour**, everywhere (Apple: "avoid using the same color to mean different
+  things"):
+
+  | Colour | Means |
+  |---|---|
+  | Indigo (`primary`) | The brand, main actions, links, progress, and **teach** |
+  | Teal (`tertiary`) | **Learn**, and nothing else |
+  | Green (`success`) | Success, accepted, **two-way match** |
+  | Amber (`warning`) | Warnings and pending |
+  | Red (`error`) | Errors and destructive actions only. A declined request is neutral, not red |
+  | Gold (`reward`) | Stars, streaks, points, badges |
+
+- **Never colour alone** (WCAG 1.4.1). Teach and learn also differ by icon (school and book),
+  selected chips and segments show a tick, the active tab's icon fills in, unread rows turn bold,
+  medals keep their numbers, and every error comes with words.
+- **Pairs, not guesses.** Text on a fill always uses that fill's `on…` role (`onPrimary` on
+  `primary`, `onTertiaryContainer` on `tertiaryContainer`), which is what guarantees contrast.
+- **Selection** uses `secondaryContainer`, as Material's filter chips, segmented buttons and
+  navigation bar do, so a selected choice never competes with the main button.
+- **Two outline strengths.** `outline` (3:1 or better) draws boundaries that identify a control:
+  text fields, checkboxes, empty stars. `border` is for decorative hairlines and dividers only.
+- **No gradients, no pure white or black.** Flat role colours only. Light surfaces are a
+  near-white `#FDFCFF` on a cool grey page; the dark page is `#121316`, not black.
+- **Light and dark are designed separately**, not inverted. In dark mode accents move to light
+  tones with dark text on them, and surfaces get lighter as they come forward (Apple's base and
+  elevated backgrounds), so depth survives where shadows do not.
+
+### How the palette is built
+
+The palette is generated, not hand-picked, with Material Color Utilities (the library behind
+Material 3's tonal palettes). A few key colours, each a hue and chroma in the HCT colour space,
+become tonal palettes from tone 0 (black) to 100 (white). Each role then takes a fixed tone,
+using Material 3's assignments: accents at 40 in light and 80 in dark, on-accent at 100 and 20,
+containers at 90 and 30, on-containers at 30 and 90.
+
+- **Brand: indigo**, hue 284 at chroma 52. The same family as the original violet, but calmer
+  (the old violet was chroma 73) so it reads as trustworthy rather than loud.
+- **Secondary: the same hue at chroma 14.** A monochromatic support colour for selection and
+  tonal buttons, so the UI does not gain a second loud hue.
+- **Tertiary: teal**, hue 198 at chroma 26. A cool accent that sits well apart from indigo and
+  stays clearly bluer than the success green. It is deliberately less saturated than the brand,
+  so it never outshines it (Material's guidance for secondary and tertiary accents).
+- **Neutrals: hue 256 at chroma 4 and 8.** A trace of blue, so surfaces look cool and clean
+  beside the indigo rather than warm or grey.
+- **Semantic colours**: green (150), amber (52), red (25), gold (84), each at a chroma that keeps
+  its container tones soft.
+
+To change the scheme, edit `KEYS` in `mobile/scripts/generate-palette.mjs` and follow the
+instructions at the top of that file.
+
+### Tokens
+
+**Surfaces and text**
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `background` | `#F4F3F7` | `#121316` | Screen background, behind everything. |
+| `surface` | `#FDFCFF` | `#1E2022` | Cards, sheets, bars. One step forward from the background (lighter in both themes). |
+| `surfaceContainer` | `#EBEAEE` | `#292A2D` | Wells inside a surface: tracks, resting chips, segmented controls. |
+| `surfaceContainerHigh` | `#E3E2E6` | `#38393C` | The most raised neutral: a selected thumb on a dark track, pressed rows. |
+| `textPrimary` | `#1A1C1E` | `#E8E8EB` | Main readable content. |
+| `textSecondary` | `#5A5F66` | `#B2B6BF` | Supporting text, captions and placeholders. 4.5:1 or better on every surface. |
+| `border` | `#D9DDE6` | `#353940` | Hairlines and dividers. Decorative only: never the sole outline of a control. |
+| `outline` | `#787C84` | `#888C94` | Boundaries that identify a control: inputs, checkboxes, empty stars. 3:1 or better. |
+
+**Brand and accents**
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `primary` | `#5054B1` | `#C0C1FF` | The brand. Main buttons, links, active states, progress, and "teach". |
+| `onPrimary` | `#FFFFFF` | `#1F2181` | Text and icons on primary. |
+| `primaryContainer` | `#E1E0FF` | `#383B98` | Soft brand fill: the next-up card, teach chips. |
+| `onPrimaryContainer` | `#383B98` | `#E1E0FF` | Text and icons on primaryContainer. |
+| `secondaryContainer` | `#E2E0F6` | `#454556` | Selected states: chips, segments, the active tab, tonal buttons. |
+| `onSecondaryContainer` | `#454556` | `#E2E0F6` | Text and icons on secondaryContainer. |
+| `tertiary` | `#326667` | `#9BD0D0` | The contrasting accent, used for one meaning only: "learn". |
+| `tertiaryContainer` | `#B7ECED` | `#164E4F` | Learn chips and tiles. |
+| `onTertiaryContainer` | `#164E4F` | `#B7ECED` | Text and icons on tertiaryContainer. |
+
+**States**
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `success` | `#266B35` | `#8FD795` | Success, accepted, and two-way matches. |
+| `successContainer` | `#AAF4AF` | `#035320` | Soft success fill. |
+| `warning` | `#974800` | `#FFB688` | Warnings and pending states. |
+| `warningContainer` | `#FFDBC7` | `#733600` | Soft warning fill. |
+| `error` | `#B12C25` | `#FFB4AB` | Errors and destructive actions. |
+| `errorContainer` | `#FFDAD6` | `#8F1011` | Soft error fill. |
+| `reward` | `#A67A00` | `#FDBB04` | Stars, streaks, points and badges. A graphic colour (3:1), not for small text. |
+| `rewardContainer` | `#FFE5B8` | `#5C4200` | Soft reward fill. |
+
+The full set (46 tokens, including raised-button lips and medal colours) is in `palette.ts`,
+each with the palette and tone it came from.
+
+### Accessibility check
+
+`npm run check:contrast` (in `mobile/`) tests every colour pairing the app uses, in both
+themes, and CI runs it on every push. It checks 50 pairs per theme:
+
+- **4.5:1** for all text, including secondary text, placeholders, links and every `on…`
+  pairing (WCAG 1.4.3). Apple asks for at least 4.5:1, and most body text here clears 12:1.
+- **3:1** for what identifies a control or its state: field and checkbox outlines, filled and
+  empty stars, progress fills against their tracks, the selected-segment tick, and medals
+  (WCAG 1.4.11).
+- That no large surface is pure white or pure black.
+
+Ratios are not rounded: 4.49 fails 4.5.
 
 ## Type
 
@@ -52,9 +158,8 @@ Numbers that change (scores, stats) use tabular figures so they do not jitter wh
 - **Raised buttons**: the face sits 4 points (3 for small) above a darker lip of the same shape.
   Pressing pushes the face down onto it. Use at most one raised primary button per view;
   everything else is tonal (soft fill) or ghost.
-- Shadows are tinted with the ink colour rather than black in light mode. In dark mode they are
-  black and stronger, and depth also comes from lighter surfaces (a raised control is lighter
-  than the track it sits on).
+- Shadows use the `shadow` role and are soft in light mode. In dark mode depth comes mainly
+  from lighter surfaces: a card is lighter than the page it sits on.
 
 ## Motion
 
@@ -141,7 +246,7 @@ views with inline colours.
 
 - **Foundations**: `Text`, `Screen`, `Display` / `Title` / `Heading` / `Subheading` / `Body` /
   `Caption` / `Overline`.
-- **Actions**: `Button` (primary, success, danger, secondary, inverse, tonal, ghost; lg / md /
+- **Actions**: `Button` (primary, success, danger, secondary, tonal, ghost; lg / md /
   sm), `IconButton`, `TextButton`, `PressableScale`.
 - **Input**: `Field`, `Input` (filled well, border on focus or error), `PasswordInput`,
   `Checkbox`, `Chip`, `Segmented`, `StarPicker`.
@@ -158,8 +263,8 @@ views with inline colours.
 ## Signature screens
 
 - **Onboarding**: one screen, not a carousel. Teach and learn skills float around the app's mark,
-  introducing the violet/orange meaning before a word is read. Account creation comes after.
-- **Home**: a "next up" card on the brand gradient that changes with the student's situation
+  introducing the indigo/teal meaning (and the school/book icons) before a word is read. Account creation comes after.
+- **Home**: a "next up" card on a soft brand container that changes with the student's situation
   (add skills, answer requests, the next session, or explore), stats, shortcuts, and a "For you"
   carousel of matches that bleeds off the screen edge.
 - **Student profile**: the felt score ring, a verdict in words, a trade card showing what flows

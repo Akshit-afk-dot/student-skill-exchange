@@ -6,15 +6,15 @@ import { PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sa
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { View, useColorScheme } from 'react-native';
+import { View } from 'react-native';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initHaptics } from './src/haptics';
 import { Navigation } from './src/navigation';
 import { AuthProvider } from './src/store/auth';
+import { ThemeProvider, palettes, useTheme } from './src/theme';
 
 export default function App() {
-  const scheme = useColorScheme();
-
   // Each weight is imported on its own so only the five the app uses are bundled.
   const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
@@ -32,16 +32,32 @@ export default function App() {
   // system font and then jumps. If the fonts fail to load, carry on without them: a
   // working app in the wrong typeface beats a blank screen.
   if (!fontsLoaded && !fontError) {
-    return <View style={{ flex: 1, backgroundColor: '#5B4BE8' }} />;
+    // Matches the native splash (app.json), so the hand-over is seamless.
+    return <View style={{ flex: 1, backgroundColor: palettes.light.primary }} />;
   }
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        {/* Inverted relative to the background, so the clock stays legible in both themes. */}
-        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-        <Navigation />
-      </AuthProvider>
-    </SafeAreaProvider>
+    <ThemeProvider>
+      <SafeAreaProvider>
+        {/*
+          Tracks the keyboard frame by frame (Android's WindowInsetsAnimation, iOS's
+          keyboard notifications), so anything that has to clear the keyboard moves
+          with it instead of jumping after it. The app draws edge to edge, so Android
+          no longer resizes the window for the keyboard: this is what makes room.
+        */}
+        <KeyboardProvider>
+          <AuthProvider>
+            <ThemedStatusBar />
+            <Navigation />
+          </AuthProvider>
+        </KeyboardProvider>
+      </SafeAreaProvider>
+    </ThemeProvider>
   );
+}
+
+/** Inverted relative to the background, so the clock stays legible in both themes. */
+function ThemedStatusBar() {
+  const t = useTheme();
+  return <StatusBar style={t.dark ? 'light' : 'dark'} />;
 }

@@ -53,3 +53,8 @@ Thumbs.db
 
 # Bundle probe output
 .probe-export/
+
+# Native projects are generated from app.json at build time (Expo prebuild). A local copy
+# must never be uploaded to EAS, or the build would use its stale colours and settings.
+mobile/android/
+mobile/ios/

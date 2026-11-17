@@ -7,7 +7,6 @@ import Animated, {
   FadeInDown,
   FadeOut,
   LinearTransition,
-  ZoomIn,
   cancelAnimation,
   interpolate,
   useAnimatedStyle,
@@ -44,6 +43,7 @@ export function PressableScale({
   style,
   hitSlop,
   accessibilityLabel,
+  accessibilityHint,
   accessibilityRole = 'button',
   accessibilityState,
 }: {
@@ -57,6 +57,8 @@ export function PressableScale({
   style?: StyleProp<ViewStyle>;
   hitSlop?: number;
   accessibilityLabel?: string;
+  /** What happens on press, when the label alone does not say. */
+  accessibilityHint?: string;
   accessibilityRole?: 'button' | 'link' | 'none' | 'tab' | 'radio' | 'checkbox' | 'switch';
   accessibilityState?: { selected?: boolean; checked?: boolean };
 }) {
@@ -85,6 +87,7 @@ export function PressableScale({
       hitSlop={hitSlop}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: Boolean(disabled), ...accessibilityState }}
       style={[style, animatedStyle, disabled && { opacity: 0.5 }]}
     >
@@ -154,7 +157,11 @@ export function FadeInView({
   );
 }
 
-/** Springs in from small, with a little overshoot. For badges, ticks and celebration pieces. */
+/**
+ * Appears with a short fade while settling from 96% scale. No spring and no overshoot:
+ * entrances should be quiet, and the only bouncy motion left in the app is the
+ * connection celebration, where it is the point.
+ */
 export function PopIn({
   children,
   delay = 0,
@@ -167,10 +174,11 @@ export function PopIn({
   const t = useTheme();
   if (!LAYOUT_ANIMATIONS_SUPPORTED) return <View style={style}>{children}</View>;
 
-  const spring = t.motion.springs.bouncy;
   return (
     <Animated.View
-      entering={ZoomIn.delay(delay).springify().damping(spring.damping).stiffness(spring.stiffness)}
+      entering={FadeIn.delay(delay)
+        .duration(t.motion.normal)
+        .withInitialValues({ opacity: 0, transform: [{ scale: 0.96 }] })}
       style={style}
     >
       {children}

@@ -113,3 +113,20 @@ incomplete profile), Aesthetic-Usability Effect, Miller's Law and Chunking.
 The redesign described in DESIGN.md is built. What remains can only be done on a phone: the
 haptics must be feel-tested on a real build (Settings → Haptics → "Feel it" plays each one).
 Mobbin was never readable without Akshit's sign-in.
+
+## Colour sources (read for the colour revision)
+
+Read in full on 16 November 2026, by the agent directly rather than through summaries:
+
+| Source | What was read | What it changed |
+|---|---|---|
+| Material 3 colour system | Overview, How the system works, Color roles, Static schemes (baseline, custom brand), Advanced customizations (apply, define new colours) | Roles instead of hex values; on-colour pairing; secondary container for selection; tertiary for one contrasting accent; `outline` vs `outline variant`; success defined as a static colour beside error |
+| Android colour guidelines | developer.android.com mobile colour guide | Stick to a small palette; secondary and tertiary less saturated than primary; lots of neutral surface; tokens, never hard-coded values; red and green are risky for colour blindness |
+| Material 3 theming codelab, and Material 3 in Compose | Full codelab; colour-scheme section | A brand colour becomes key colours, then tonal palettes, then roles; "not all components should use primary" |
+| Apple HIG | Color, Dark Mode, and the Vision section of Accessibility | One meaning per colour; base and elevated backgrounds in dark mode; 4.5:1 minimum, aim for 7:1 on small custom text; blue–orange and red–green pairs are hard to tell apart, so add shapes or icons |
+| WCAG 2.2 | Understanding 1.4.3, 1.4.11 and 1.4.1 | Placeholders need 4.5:1; a field marked only by a faint tint needs 3:1 against its surroundings; star fills and checkbox outlines need 3:1; state must not rest on hue alone; ratios are never rounded |
+| Adobe Color | The colour-wheel tool page | Names the harmony types but does not explain them. The harmony reasoning in DESIGN.md is standard colour theory, not from Adobe's page |
+
+The old violet and orange pairing was nearly the blue–orange pair Apple warns about, it relied
+on hue to tell teaching from learning, and its filled inputs, gold stars and checkbox borders
+fell below 3:1. All of that is fixed in the new palette (see DESIGN.md, Colour).

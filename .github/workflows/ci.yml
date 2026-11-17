@@ -98,6 +98,11 @@ jobs:
         working-directory: mobile
         run: npm run lint
 
+      # Every colour pairing in the palette against WCAG 2.2 AA, in light and dark.
+      - name: Colour contrast
+        working-directory: mobile
+        run: npm run check:contrast
+
       # A full Metro bundle catches import and resolution errors that tsc cannot see.
       - name: Bundle
         working-directory: mobile

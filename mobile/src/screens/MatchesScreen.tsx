@@ -30,11 +30,13 @@ type Filter = 'all' | 'twoWay';
 function HowScoringWorks({ weights }: { weights: Record<string, number> }) {
   const t = useTheme();
   const rows: Array<[string, number, string]> = [
+    // One colour for all five: the bars are compared by length, and a rainbow would
+    // suggest the colours mean something.
     ['Skill fit', weights.skill ?? 0, t.colors.primary],
-    ['Shared free time', weights.availability ?? 0, t.colors.accent],
-    ['Experience level', weights.experience ?? 0, t.colors.learnVivid],
-    ['Rating', weights.rating ?? 0, t.colors.star],
-    ['Location', weights.location ?? 0, t.colors.success],
+    ['Shared free time', weights.availability ?? 0, t.colors.primary],
+    ['Experience level', weights.experience ?? 0, t.colors.primary],
+    ['Rating', weights.rating ?? 0, t.colors.primary],
+    ['Location', weights.location ?? 0, t.colors.primary],
   ];
   const spring = t.motion.springs.spatial;
 
@@ -47,7 +49,7 @@ function HowScoringWorks({ weights }: { weights: Record<string, number> }) {
       }
     >
       <Card style={{ marginTop: t.spacing.md }} tint={t.colors.surface}>
-        <Text style={{ fontSize: 15, lineHeight: 21, fontWeight: '700', color: t.colors.text }}>
+        <Text style={{ fontSize: 15, lineHeight: 21, fontWeight: '700', color: t.colors.textPrimary }}>
           How your score is built
         </Text>
         <Body small muted style={{ marginTop: 2, marginBottom: t.spacing.md }}>
@@ -57,13 +59,13 @@ function HowScoringWorks({ weights }: { weights: Record<string, number> }) {
           {rows.map(([label, value, colour]) => (
             <View key={label} style={{ gap: 5 }}>
               <Row style={{ justifyContent: 'space-between' }}>
-                <Caption style={{ color: t.colors.text, fontSize: 13 }}>{label}</Caption>
+                <Caption style={{ color: t.colors.textPrimary, fontSize: 13 }}>{label}</Caption>
                 <Text
                   style={{
                     fontSize: 13,
                     lineHeight: 17,
                     fontWeight: '700',
-                    color: t.colors.text,
+                    color: t.colors.textPrimary,
                     fontVariant: ['tabular-nums'],
                   }}
                 >

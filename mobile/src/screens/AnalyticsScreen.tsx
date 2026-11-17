@@ -37,12 +37,12 @@ export function AnalyticsScreen() {
       {state.error ? <Banner tone="danger" text={state.error} /> : null}
 
       <Row gap={t.spacing.sm} style={{ marginBottom: t.spacing.sm }}>
-        <StatTile label="Hours taught" value={data?.hoursTaught ?? 0} icon="school-outline" />
+        <StatTile label="Hours taught" value={data?.hoursTaught ?? 0} icon="school-outline" tone="teach" />
         <StatTile
           label="Hours learned"
           value={data?.hoursLearned ?? 0}
           icon="book-outline"
-          tone="success"
+          tone="learn"
         />
       </Row>
       <Row gap={t.spacing.sm} style={{ marginBottom: t.spacing.sm }}>
@@ -50,12 +50,13 @@ export function AnalyticsScreen() {
           label="Sessions taught"
           value={data?.sessionsTaught ?? 0}
           icon="people-outline"
+          tone="teach"
         />
         <StatTile
           label="Sessions attended"
           value={data?.sessionsLearned ?? 0}
           icon="person-outline"
-          tone="success"
+          tone="learn"
         />
       </Row>
       <Row gap={t.spacing.sm} style={{ marginBottom: t.spacing.xl }}>
@@ -63,9 +64,9 @@ export function AnalyticsScreen() {
           label="Current streak"
           value={plural(data?.streakDays ?? 0, 'day')}
           icon="flame-outline"
-          tone="warning"
+          tone="reward"
         />
-        <StatTile label="Points" value={data?.points ?? 0} icon="trophy-outline" />
+        <StatTile label="Points" value={data?.points ?? 0} icon="trophy-outline" tone="reward" />
       </Row>
 
       <SectionHeader title="Reputation" />
@@ -110,7 +111,7 @@ export function AnalyticsScreen() {
                   flex: 1,
                   height: 8,
                   borderRadius: 4,
-                  backgroundColor: t.colors.surfaceAlt,
+                  backgroundColor: t.colors.surfaceContainer,
                   overflow: 'hidden',
                 }}
               >

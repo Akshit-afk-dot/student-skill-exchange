@@ -12,7 +12,7 @@ import { POINTS, type SessionMode, type SessionStatus } from '../../types/domain
 import { ApiError } from '../../utils/errors';
 import { paginate, type Paginated } from '../../utils/pagination';
 import { evaluateBadges, touchStreak } from '../gamification/service';
-import { notify } from '../notifications/service';
+import { notify, resolveNotifications } from '../notifications/service';
 
 export interface CreateSessionInput {
   /** The other participant. The caller's role determines who teaches. */
@@ -256,6 +256,7 @@ export async function confirmSession(sessionId: string, userId: string) {
   }
   session.status = 'CONFIRMED';
   await session.save();
+  await resolveNotifications(userId, ['SESSION_SCHEDULED'], { sessionId: String(session._id) });
 
   const otherId = String(session.teacher) === userId ? session.learner : session.teacher;
   emitToUser(String(otherId), RT.SESSION_UPDATED, { sessionId: String(session._id) });
@@ -274,6 +275,15 @@ export async function cancelSession(sessionId: string, userId: string, reason?: 
   session.cancelledBy = new Types.ObjectId(userId);
   if (reason) session.cancelReason = reason;
   await session.save();
+
+  // The session is off, so its invitations and reminders are moot for both students.
+  await Promise.all(
+    [session.teacher, session.learner].map((participant) =>
+      resolveNotifications(participant, ['SESSION_SCHEDULED', 'SESSION_REMINDER'], {
+        sessionId: String(session._id),
+      }),
+    ),
+  );
 
   const otherId = String(session.teacher) === userId ? session.learner : session.teacher;
   const canceller = await User.findById(userId).select('name').lean();
@@ -320,6 +330,10 @@ export async function completeSession(
   if (already) return { session, fullyCompleted: false };
 
   session.completedBy.push(new Types.ObjectId(userId));
+  // Marking it done answers the invitation, the reminder and any "mark it done" nudge.
+  await resolveNotifications(userId, ['SESSION_SCHEDULED', 'SESSION_REMINDER', 'SESSION_COMPLETED'], {
+    sessionId: String(session._id),
+  });
 
   const bothConfirmed = session.completedBy.length >= 2;
   if (!bothConfirmed) {

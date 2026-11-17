@@ -881,3 +881,98 @@ describe('reports', () => {
       .expect(400);
   });
 });
+
+describe('notification centre', () => {
+  async function unreadNotifications(user: TestUser): Promise<Array<{ type: string }>> {
+    const res = await request(getApp())
+      .get(`${API}/notifications?unreadOnly=true`)
+      .set(auth(user.accessToken))
+      .expect(200);
+    return res.body.data.items;
+  }
+
+  it('clears a request notification once the recipient answers it', async () => {
+    const { aarav, priya, figma } = await setupPair();
+    const created = await request(getApp())
+      .post(`${API}/requests`)
+      .set(auth(aarav.accessToken))
+      .send({ receiverId: priya.id, skillId: figma, message: 'Teach me Figma' })
+      .expect(201);
+
+    expect((await unreadNotifications(priya)).map((n) => n.type)).toContain('REQUEST_RECEIVED');
+
+    await request(getApp())
+      .post(`${API}/requests/${created.body.data._id}/accept`)
+      .set(auth(priya.accessToken))
+      .expect(200);
+
+    expect((await unreadNotifications(priya)).map((n) => n.type)).not.toContain('REQUEST_RECEIVED');
+  });
+
+  it('clears message notifications once the chat is read', async () => {
+    const { aarav, priya, figma } = await setupPair();
+    const { conversationId } = await connectUsers(aarav, priya, figma);
+
+    await request(getApp())
+      .post(`${API}/conversations/${conversationId}/messages`)
+      .set(auth(aarav.accessToken))
+      .send({ body: 'Hi Priya' })
+      .expect(201);
+    expect((await unreadNotifications(priya)).map((n) => n.type)).toContain('MESSAGE_RECEIVED');
+
+    await request(getApp())
+      .post(`${API}/conversations/${conversationId}/read`)
+      .set(auth(priya.accessToken))
+      .expect(200);
+
+    expect((await unreadNotifications(priya)).map((n) => n.type)).not.toContain('MESSAGE_RECEIVED');
+  });
+
+  it('leaves unrelated notifications alone', async () => {
+    const { aarav, priya, figma } = await setupPair();
+    const { conversationId } = await connectUsers(aarav, priya, figma);
+    await request(getApp())
+      .post(`${API}/conversations/${conversationId}/messages`)
+      .set(auth(aarav.accessToken))
+      .send({ body: 'Hi Priya' })
+      .expect(201);
+
+    // Aarav reading the same chat must not clear Priya's alert.
+    await request(getApp())
+      .post(`${API}/conversations/${conversationId}/read`)
+      .set(auth(aarav.accessToken))
+      .expect(200);
+
+    expect((await unreadNotifications(priya)).map((n) => n.type)).toContain('MESSAGE_RECEIVED');
+  });
+});
+
+describe('unread chat badge', () => {
+  it('does not count a conversation hidden by a block', async () => {
+    const { aarav, priya, figma } = await setupPair();
+    const { conversationId } = await connectUsers(aarav, priya, figma);
+    await request(getApp())
+      .post(`${API}/conversations/${conversationId}/messages`)
+      .set(auth(aarav.accessToken))
+      .send({ body: 'Hi Priya' })
+      .expect(201);
+
+    await request(getApp())
+      .post(`${API}/users/${aarav.id}/block`)
+      .set(auth(priya.accessToken))
+      .expect(200);
+
+    const list = await request(getApp())
+      .get(`${API}/conversations`)
+      .set(auth(priya.accessToken))
+      .expect(200);
+    const unread = await request(getApp())
+      .get(`${API}/conversations/unread-count`)
+      .set(auth(priya.accessToken))
+      .expect(200);
+
+    // The badge and the list agree: nothing shown, nothing counted.
+    expect(list.body.data.items).toHaveLength(0);
+    expect(unread.body.data.count).toBe(0);
+  });
+});

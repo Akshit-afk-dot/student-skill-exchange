@@ -124,7 +124,7 @@ export function CalendarScreen() {
                     backgroundColor: isSelected
                       ? t.colors.primary
                       : isToday
-                        ? t.colors.primarySoft
+                        ? t.colors.primaryContainer
                         : 'transparent',
                   }}
                 >
@@ -134,8 +134,8 @@ export function CalendarScreen() {
                       color: isSelected
                         ? t.colors.onPrimary
                         : isToday
-                          ? t.colors.primary
-                          : t.colors.text,
+                          ? t.colors.onPrimaryContainer
+                          : t.colors.textPrimary,
                       fontWeight: isToday || isSelected ? '700' : '400',
                     }}
                   >
@@ -149,7 +149,7 @@ export function CalendarScreen() {
                       height: 5,
                       borderRadius: 3,
                       marginTop: 2,
-                      backgroundColor: isSelected ? t.colors.primary : t.colors.success,
+                      backgroundColor: t.colors.primary,
                     }}
                   />
                 ) : null}

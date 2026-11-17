@@ -29,6 +29,8 @@ export const RT = {
   TYPING: 'chat:typing',
   PRESENCE: 'presence:update',
   NOTIFICATION: 'notification:new',
+  /** Some of the user's notifications were read or resolved: refresh counts. */
+  NOTIFICATION_READ: 'notification:read',
   REQUEST_NEW: 'request:new',
   REQUEST_UPDATED: 'request:updated',
   SESSION_UPDATED: 'session:updated',

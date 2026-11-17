@@ -7,32 +7,19 @@ is drawn at 4x and scaled down, so edges stay smooth.
 """
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ROOT / 'assets'
 STORE = ROOT / 'store'
 
-# The app's own palette (src/theme/index.ts).
-INDIGO_LIGHT = (124, 108, 247)
-INDIGO = (91, 75, 232)
-INDIGO_DEEP = (58, 44, 176)
-WHITE = (255, 255, 255)
-TINT = (205, 199, 255)  # the second arrow, so it reads as two people rather than one symbol
+# The app's own palette (src/theme/palette.ts, light theme). Solid, not a gradient: the
+# icon should look like the app it opens, and the app does not use gradients.
+PRIMARY = (0x50, 0x54, 0xB1)  # primary
+WHITE = (255, 255, 255)  # onPrimary
+TINT = (0xE1, 0xE0, 0xFF)  # primaryContainer: the second arrow, so it reads as two people
 
 SS = 4  # supersampling factor
-
-
-def gradient(width, height, start, end):
-    """A diagonal gradient, top left to bottom right."""
-    img = Image.new('RGB', (width, height))
-    px = img.load()
-    span = max(1, width + height - 2)
-    for y in range(height):
-        for x in range(width):
-            t = (x + y) / span
-            px[x, y] = tuple(round(start[i] + (end[i] - start[i]) * t) for i in range(3))
-    return img
 
 
 def stroke(draw, a, b, thickness):
@@ -79,7 +66,7 @@ def draw_mark(img, cx, cy, scale, top=WHITE, bottom=TINT):
 
 def app_icon(size=1024):
     """Full-bleed and opaque: iOS rejects icons with transparency, and masks the corners itself."""
-    img = gradient(size, size, INDIGO_LIGHT, INDIGO_DEEP)
+    img = Image.new('RGB', (size, size), PRIMARY)
     draw_mark(img, size / 2, size / 2, size / 1024 * 1.12)
     return img
 
@@ -90,28 +77,10 @@ def transparent_mark(size, scale, top=WHITE, bottom=TINT):
     return img
 
 
-def soft_circle(img, centre, radius, colour, alpha):
-    """A translucent background circle for the feature graphic."""
-    layer = Image.new('RGBA', img.size, (0, 0, 0, 0))
-    ImageDraw.Draw(layer).ellipse(
-        (centre[0] - radius, centre[1] - radius, centre[0] + radius, centre[1] + radius),
-        fill=colour + (alpha,),
-    )
-    layer = layer.filter(ImageFilter.GaussianBlur(2))
-    return Image.alpha_composite(img, layer)
-
-
 def feature_graphic():
     """1024x500, opaque, as Play requires. No text: the store shows the name right beside it."""
     w, h = 1024, 500
-    img = gradient(w, h, INDIGO_LIGHT, INDIGO_DEEP).convert('RGBA')
-    for centre, radius, alpha in (
-        ((120, 80), 210, 22),
-        ((930, 440), 260, 24),
-        ((840, 60), 90, 18),
-        ((190, 450), 70, 16),
-    ):
-        img = soft_circle(img, centre, radius, WHITE, alpha)
+    img = Image.new('RGBA', (w, h), PRIMARY + (255,))
     mark = Image.new('RGBA', (w, h), (0, 0, 0, 0))
     draw_mark(mark, w / 2, h / 2, 0.68)
     return Image.alpha_composite(img, mark).convert('RGB')
@@ -127,7 +96,7 @@ def main():
 
     # Android keeps adaptive icon content inside the middle 61% of the canvas, because
     # launchers crop the rest into circles, squircles and so on.
-    gradient(1024, 1024, INDIGO_LIGHT, INDIGO_DEEP).save(ASSETS / 'android-icon-background.png', optimize=True)
+    Image.new('RGB', (1024, 1024), PRIMARY).save(ASSETS / 'android-icon-background.png', optimize=True)
     transparent_mark(1024, 0.92).save(ASSETS / 'android-icon-foreground.png', optimize=True)
     transparent_mark(1024, 0.92, WHITE, WHITE).save(ASSETS / 'android-icon-monochrome.png', optimize=True)
 

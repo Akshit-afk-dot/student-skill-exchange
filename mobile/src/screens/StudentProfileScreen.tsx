@@ -4,7 +4,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback } from 'react';
 import { Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { connections, matching, users as usersApi } from '../api/endpoints';
-import { FadeInView, PopIn } from '../components/motion';
+import { FadeInView } from '../components/motion';
 import { ScoreBar, ScoreRing } from '../components/ScoreRing';
 import {
   Avatar,
@@ -50,7 +50,7 @@ function Meta({ icon, value, label, colour }: { icon: keyof typeof Ionicons.glyp
     <View style={{ alignItems: 'center', flex: 1, gap: 2 }} accessible accessibilityLabel={`${value} ${label}`}>
       <Row gap={4}>
         <Ionicons name={icon} size={15} color={colour} />
-        <Text style={[t.typography.heading, { color: t.colors.text, fontVariant: ['tabular-nums'] }]}>{value}</Text>
+        <Text style={[t.typography.heading, { color: t.colors.textPrimary, fontVariant: ['tabular-nums'] }]}>{value}</Text>
       </Row>
       <Caption>{label}</Caption>
     </View>
@@ -87,24 +87,27 @@ function TradeCard({
         minHeight: 92,
       }}
     >
-      <Overline style={{ color: fg, marginBottom: 6 }}>{label}</Overline>
+      <Row gap={5} style={{ marginBottom: 6 }}>
+        <Ionicons name={side === 'left' ? 'book' : 'school'} size={13} color={fg} />
+        <Overline style={{ color: fg }}>{label}</Overline>
+      </Row>
       {skills.length === 0 ? (
-        <Caption>Nothing yet</Caption>
+        <Caption style={{ color: fg }}>Nothing yet</Caption>
       ) : (
         skills.slice(0, 3).map((s) => (
-          <Text key={s.id} numberOfLines={1} style={{ color: t.colors.text, fontSize: 15, lineHeight: 21, fontWeight: '700' }}>
+          <Text key={s.id} numberOfLines={1} style={{ color: t.colors.textPrimary, fontSize: 15, lineHeight: 21, fontWeight: '700' }}>
             {s.name}
           </Text>
         ))
       )}
-      {skills.length > 3 ? <Caption>+{skills.length - 3} more</Caption> : null}
+      {skills.length > 3 ? <Caption style={{ color: fg }}>+{skills.length - 3} more</Caption> : null}
     </View>
   );
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: t.spacing.sm }}>
-      {column('You learn', learn, t.colors.learnSoft, t.colors.learn, 'left')}
-      {column('You teach', teach, t.colors.primarySoft, t.colors.primary, 'right')}
+      {column('You learn', learn, t.colors.tertiaryContainer, t.colors.onTertiaryContainer, 'left')}
+      {column('You teach', teach, t.colors.primaryContainer, t.colors.onPrimaryContainer, 'right')}
       {/* The exchange mark sits on the seam between the two columns. */}
       <View
         pointerEvents="none"
@@ -118,13 +121,13 @@ function TradeCard({
               borderRadius: 17,
               backgroundColor: t.colors.surface,
               borderWidth: 3,
-              borderColor: t.colors.bg,
+              borderColor: t.colors.background,
               alignItems: 'center',
               justifyContent: 'center',
             },
           ]}
         >
-          <Ionicons name="swap-horizontal" size={16} color={t.colors.text} />
+          <Ionicons name="swap-horizontal" size={16} color={t.colors.textPrimary} />
         </View>
       </View>
     </View>
@@ -215,15 +218,13 @@ export function StudentProfileScreen() {
       >
         {/* Identity */}
         <View style={{ alignItems: 'center' }}>
-          <PopIn>
-            <Avatar
-              name={profile.name}
-              uri={profile.profileImage}
-              size={96}
-              online={profile.isOnline}
-              {...(match?.twoWay ? { ring: t.colors.success } : {})}
-            />
-          </PopIn>
+          <Avatar
+            name={profile.name}
+            uri={profile.profileImage}
+            size={96}
+            online={profile.isOnline}
+            {...(match?.twoWay ? { ring: t.colors.success } : {})}
+          />
           <View style={{ marginTop: t.spacing.md, alignItems: 'center' }}>
             <VerifiedName name={profile.name} verified={profile.verified} size="title" />
           </View>
@@ -246,14 +247,14 @@ export function StudentProfileScreen() {
           <Row>
             <Meta
               icon="star"
-              colour={t.colors.star}
+              colour={t.colors.reward}
               value={profile.rating.count > 0 ? profile.rating.average.toFixed(1) : '—'}
               label={plural(profile.rating.count, 'review')}
             />
             <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: t.colors.border }} />
             <Meta icon="school" colour={t.colors.primary} value={String(profile.stats.sessionsTaught)} label="taught" />
             <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: t.colors.border }} />
-            <Meta icon="flame" colour={t.colors.warning} value={String(profile.stats.points)} label="points" />
+            <Meta icon="flame" colour={t.colors.reward} value={String(profile.stats.points)} label="points" />
           </Row>
         </Card>
 
@@ -335,7 +336,7 @@ export function StudentProfileScreen() {
                   {i > 0 ? <Divider spacing={0} /> : null}
                   <Row style={{ justifyContent: 'space-between', paddingHorizontal: t.spacing.lg, minHeight: 52 }}>
                     <Row gap={10} style={{ flex: 1 }}>
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: t.colors.primary }} />
+                      <Ionicons name="school" size={15} color={t.colors.primary} />
                       <Body style={{ flex: 1 }} numberOfLines={1}>
                         {entry.skill.name}
                       </Body>
@@ -359,7 +360,7 @@ export function StudentProfileScreen() {
                   {i > 0 ? <Divider spacing={0} /> : null}
                   <Row style={{ justifyContent: 'space-between', paddingHorizontal: t.spacing.lg, minHeight: 52 }}>
                     <Row gap={10} style={{ flex: 1 }}>
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: t.colors.learnVivid }} />
+                      <Ionicons name="book" size={15} color={t.colors.tertiary} />
                       <Body style={{ flex: 1 }} numberOfLines={1}>
                         {entry.skill.name}
                       </Body>
@@ -402,7 +403,7 @@ export function StudentProfileScreen() {
                         key={n}
                         name={n <= Math.round(profile.reviewSummary.average) ? 'star' : 'star-outline'}
                         size={12}
-                        color={t.colors.star}
+                        color={t.colors.reward}
                       />
                     ))}
                   </Row>
@@ -420,11 +421,11 @@ export function StudentProfileScreen() {
                             flex: 1,
                             height: 6,
                             borderRadius: 3,
-                            backgroundColor: t.colors.surfaceAlt,
+                            backgroundColor: t.colors.surfaceContainer,
                             overflow: 'hidden',
                           }}
                         >
-                          <View style={{ width: `${pct}%`, height: '100%', backgroundColor: t.colors.star }} />
+                          <View style={{ width: `${pct}%`, height: '100%', backgroundColor: t.colors.reward }} />
                         </View>
                       </Row>
                     );
@@ -451,7 +452,6 @@ export function StudentProfileScreen() {
             <Card style={{ padding: 0 }}>
               <ListRow
                 icon="flag"
-                tone="warning"
                 title="Report"
                 subtitle="Tell us about a problem with this student"
                 onPress={() => navigation.navigate('ReportUser', { userId: profile.id, userName: profile.name })}
@@ -460,7 +460,6 @@ export function StudentProfileScreen() {
               {profile.blockedByMe ? (
                 <ListRow
                   icon="checkmark-circle"
-                  tone="success"
                   title={`Unblock ${firstName}`}
                   onPress={() => void setBlocked.run(false)}
                 />

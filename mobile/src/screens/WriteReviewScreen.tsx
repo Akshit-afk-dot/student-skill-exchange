@@ -55,7 +55,7 @@ export function WriteReviewScreen() {
   });
 
   const labelColour =
-    rating >= 4 ? t.colors.success : rating === 3 ? t.colors.text : rating > 0 ? t.colors.warning : t.colors.textMuted;
+    rating >= 4 ? t.colors.success : rating === 3 ? t.colors.textPrimary : rating > 0 ? t.colors.warning : t.colors.textSecondary;
 
   return (
     <Screen scroll edges={[]}>
@@ -90,7 +90,7 @@ export function WriteReviewScreen() {
 
       {rating >= 4 ? (
         <View style={{ marginBottom: t.spacing.lg }}>
-          <Text style={{ fontSize: 14, lineHeight: 19, fontWeight: '600', color: t.colors.text, marginBottom: 8 }}>
+          <Text style={{ fontSize: 14, lineHeight: 19, fontWeight: '600', color: t.colors.textPrimary, marginBottom: 8 }}>
             What stood out?
           </Text>
           <Row gap={t.spacing.sm} style={{ flexWrap: 'wrap' }}>

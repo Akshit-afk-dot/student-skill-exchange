@@ -168,12 +168,12 @@ export function ConnectionCelebration({
     transform: [{ translateY: (1 - actions.value) * 12 }],
   }));
 
-  const colours = [t.colors.primary, t.colors.learnVivid, t.colors.success, t.colors.star];
+  const colours = [t.colors.primary, t.colors.tertiary, t.colors.success, t.colors.reward];
   const firstName = partner.name.split(' ')[0] ?? partner.name;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: t.colors.bg }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: t.colors.background }]} />
       <View
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: t.spacing.xl }}
         accessibilityViewIsModal
@@ -199,7 +199,7 @@ export function ConnectionCelebration({
             <Avatar name={me.name} uri={me.profileImage} size={AVATAR} ring={t.colors.primary} />
           </Animated.View>
           <Animated.View style={[{ position: 'absolute' }, right]}>
-            <Avatar name={partner.name} uri={partner.profileImage} size={AVATAR} ring={t.colors.learnVivid} />
+            <Avatar name={partner.name} uri={partner.profileImage} size={AVATAR} ring={t.colors.tertiary} />
           </Animated.View>
           <Animated.View
             style={[
@@ -211,7 +211,7 @@ export function ConnectionCelebration({
                 borderRadius: 20,
                 backgroundColor: t.colors.success,
                 borderWidth: 4,
-                borderColor: t.colors.bg,
+                borderColor: t.colors.background,
                 alignItems: 'center',
                 justifyContent: 'center',
               },
@@ -225,14 +225,14 @@ export function ConnectionCelebration({
         <Animated.View style={[{ alignItems: 'center', marginTop: t.spacing.lg }, titleStyle]}>
           <Text
             accessibilityRole="header"
-            style={[t.typography.display, { color: t.colors.text, textAlign: 'center' }]}
+            style={[t.typography.display, { color: t.colors.textPrimary, textAlign: 'center' }]}
           >
             You're connected!
           </Text>
           <Text
             style={[
               t.typography.body,
-              { color: t.colors.textMuted, textAlign: 'center', marginTop: t.spacing.sm, maxWidth: 300 },
+              { color: t.colors.textSecondary, textAlign: 'center', marginTop: t.spacing.sm, maxWidth: 300 },
             ]}
           >
             {skill

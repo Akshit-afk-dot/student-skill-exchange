@@ -52,7 +52,7 @@ function SkillLine({
       <Overline>{label}</Overline>
       <Row gap={6} style={{ flexWrap: 'wrap' }}>
         {skills.slice(0, 3).map((s) => (
-          <Chip key={s.id} label={s.name} tone={tone} />
+          <Chip key={s.id} label={s.name} tone={tone} icon={tone === 'teach' ? 'school' : 'book'} />
         ))}
         {extra > 0 ? <Chip label={`+${extra}`} /> : null}
       </Row>
@@ -92,13 +92,13 @@ export function StudentCard({
               <StarRating value={student.rating.average} count={student.rating.count} />
               {student.distanceKm !== undefined ? (
                 <Row gap={3}>
-                  <Ionicons name="location-outline" size={13} color={t.colors.textMuted} />
+                  <Ionicons name="location-outline" size={13} color={t.colors.textSecondary} />
                   <Caption>{student.distanceKm.toFixed(1)} km</Caption>
                 </Row>
               ) : null}
             </Row>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={t.colors.textMuted} />
+          <Ionicons name="chevron-forward" size={18} color={t.colors.textSecondary} />
         </Row>
 
         {student.matchedSkillLevel ? (
@@ -167,16 +167,16 @@ export function MatchCard({
               flexDirection: 'row',
               alignItems: 'center',
               gap: 7,
-              backgroundColor: t.colors.successSoft,
+              backgroundColor: t.colors.successContainer,
               paddingVertical: 8,
               paddingHorizontal: t.spacing.lg,
             }}
           >
-            <Ionicons name="swap-horizontal" size={15} color={t.colors.success} />
-            <Text style={{ color: t.colors.success, fontSize: 13, lineHeight: 17, fontWeight: '700' }}>
+            <Ionicons name="swap-horizontal" size={15} color={t.colors.onSuccessContainer} />
+            <Text style={{ color: t.colors.onSuccessContainer, fontSize: 13, lineHeight: 17, fontWeight: '700' }}>
               Two-way exchange
             </Text>
-            <Text style={{ color: t.colors.success, fontSize: 13, lineHeight: 17, flex: 1 }} numberOfLines={1}>
+            <Text style={{ color: t.colors.onSuccessContainer, fontSize: 13, lineHeight: 17, flex: 1 }} numberOfLines={1}>
               You can each teach the other
             </Text>
           </View>
@@ -205,7 +205,7 @@ export function MatchCard({
                 <StarRating value={match.rating.average} count={match.rating.count} />
                 {match.distanceKm !== undefined ? (
                   <Row gap={3}>
-                    <Ionicons name="location-outline" size={13} color={t.colors.textMuted} />
+                    <Ionicons name="location-outline" size={13} color={t.colors.textSecondary} />
                     <Caption>{match.distanceKm.toFixed(1)} km</Caption>
                   </Row>
                 ) : null}
@@ -269,14 +269,14 @@ function DateTile({ iso, muted = false }: { iso: string; muted?: boolean }) {
       style={{
         width: 56,
         borderRadius: t.radius.md,
-        backgroundColor: muted ? t.colors.surfaceAlt : t.colors.primarySoft,
+        backgroundColor: muted ? t.colors.surfaceContainer : t.colors.primaryContainer,
         alignItems: 'center',
         paddingVertical: 8,
       }}
     >
       <Text
         style={{
-          color: muted ? t.colors.textMuted : t.colors.primary,
+          color: muted ? t.colors.textSecondary : t.colors.onPrimaryContainer,
           fontSize: 11.5,
           lineHeight: 15,
           fontWeight: '700',
@@ -288,7 +288,7 @@ function DateTile({ iso, muted = false }: { iso: string; muted?: boolean }) {
       </Text>
       <Text
         style={{
-          color: t.colors.text,
+          color: t.colors.textPrimary,
           fontSize: 22,
           lineHeight: 27,
           fontWeight: '800',
@@ -297,7 +297,7 @@ function DateTile({ iso, muted = false }: { iso: string; muted?: boolean }) {
       >
         {when.format('D')}
       </Text>
-      <Text style={{ color: t.colors.textMuted, fontSize: 11.5, lineHeight: 15, fontWeight: '600' }}>
+      <Text style={{ color: t.colors.textSecondary, fontSize: 11.5, lineHeight: 15, fontWeight: '600' }}>
         {when.format('MMM')}
       </Text>
     </View>
@@ -352,7 +352,7 @@ export function SessionCard({
 
             <Row gap={t.spacing.md} style={{ marginTop: 4, flexWrap: 'wrap' }}>
               <Row gap={4}>
-                <Ionicons name="time-outline" size={14} color={t.colors.textMuted} />
+                <Ionicons name="time-outline" size={14} color={t.colors.textSecondary} />
                 <Caption>
                   {formatTime(session.scheduledAt)} · {formatDuration(session.durationMinutes)}
                 </Caption>
@@ -361,7 +361,7 @@ export function SessionCard({
                 <Ionicons
                   name={session.mode === 'ONLINE' ? 'videocam-outline' : 'location-outline'}
                   size={14}
-                  color={t.colors.textMuted}
+                  color={t.colors.textSecondary}
                 />
                 <Caption>{session.mode === 'ONLINE' ? 'Online' : 'In person'}</Caption>
               </Row>
@@ -458,7 +458,7 @@ export function RequestCard({
             <Chip
               label={`${incoming ? 'You learn' : 'You teach'} ${request.offeredSkill.name}`}
               tone={incoming ? 'learn' : 'teach'}
-              icon="swap-horizontal"
+              icon={incoming ? 'book-outline' : 'school-outline'}
             />
           ) : null}
         </Row>
@@ -466,7 +466,7 @@ export function RequestCard({
         <View
           style={{
             padding: t.spacing.md,
-            backgroundColor: t.colors.surfaceAlt,
+            backgroundColor: t.colors.surfaceContainer,
             borderRadius: t.radius.md,
             borderTopLeftRadius: 4,
           }}
@@ -534,17 +534,17 @@ export function MatchPeek({
         <View style={{ gap: 6 }}>
           {learn ? (
             <Row gap={6}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: t.colors.learnVivid }} />
-              <Text numberOfLines={1} style={{ flex: 1, fontSize: 13.5, lineHeight: 19, color: t.colors.text }}>
-                <Text style={{ fontWeight: '700', color: t.colors.learn }}>Learn </Text>
+              <Ionicons name="book" size={14} color={t.colors.tertiary} />
+              <Text numberOfLines={1} style={{ flex: 1, fontSize: 13.5, lineHeight: 19, color: t.colors.textPrimary }}>
+                <Text style={{ fontWeight: '700', color: t.colors.tertiary }}>Learn </Text>
                 {learn.name}
               </Text>
             </Row>
           ) : null}
           {teach ? (
             <Row gap={6}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: t.colors.primary }} />
-              <Text numberOfLines={1} style={{ flex: 1, fontSize: 13.5, lineHeight: 19, color: t.colors.text }}>
+              <Ionicons name="school" size={14} color={t.colors.primary} />
+              <Text numberOfLines={1} style={{ flex: 1, fontSize: 13.5, lineHeight: 19, color: t.colors.textPrimary }}>
                 <Text style={{ fontWeight: '700', color: t.colors.primary }}>Teach </Text>
                 {teach.name}
               </Text>

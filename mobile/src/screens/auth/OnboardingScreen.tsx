@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import Animated, {
@@ -20,7 +19,7 @@ import { useTheme } from '../../theme';
 import type { AuthStackParamList } from '../../navigation/types';
 
 /**
- * Skills drifting around the exchange mark. Violet ones are taught, orange ones learned:
+ * Skills drifting around the exchange mark. Indigo ones are taught, teal ones learned:
  * the same two colours the rest of the app uses for exactly that, introduced here.
  */
 const FLOATING: ReadonlyArray<{
@@ -78,7 +77,10 @@ function FloatingSkill({
     transform: [{ translateY: (bob.value - 0.5) * 12 }, { scale: 0.6 + appear.value * 0.4 }],
   }));
 
-  const dot = kind === 'teach' ? t.colors.primary : t.colors.learnVivid;
+  // Teach and learn differ by icon as well as colour (school and book, as everywhere else),
+  // so the pairing reads for people who cannot tell the two hues apart.
+  const tint = kind === 'teach' ? t.colors.primary : t.colors.tertiary;
+  const glyph = kind === 'teach' ? 'school' : 'book';
 
   return (
     <Animated.View
@@ -112,10 +114,10 @@ function FloatingSkill({
           t.elevation(2),
         ]}
       >
-        <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: dot }} />
+        <Ionicons name={glyph} size={14} color={tint} />
         <Text
           numberOfLines={1}
-          style={{ color: t.colors.text, fontSize: 13.5, lineHeight: 18, fontWeight: '700' }}
+          style={{ color: t.colors.textPrimary, fontSize: 13.5, lineHeight: 18, fontWeight: '700' }}
         >
           {label}
         </Text>
@@ -153,7 +155,7 @@ function ExchangeMark() {
 
   const halo = {
     position: 'absolute' as const,
-    backgroundColor: t.colors.primarySoft,
+    backgroundColor: t.colors.primaryContainer,
   };
 
   return (
@@ -161,20 +163,18 @@ function ExchangeMark() {
       <Animated.View style={[halo, { width: 250, height: 250, borderRadius: 125 }, outer]} />
       <Animated.View style={[halo, { width: 186, height: 186, borderRadius: 93 }, inner]} />
       <Animated.View style={[t.elevation(3), { borderRadius: 40 }, mark]}>
-        <LinearGradient
-          colors={t.gradients.hero}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <View
           style={{
             width: 124,
             height: 124,
             borderRadius: 40,
             alignItems: 'center',
             justifyContent: 'center',
+            backgroundColor: t.colors.primary,
           }}
         >
-          <Ionicons name="swap-horizontal" size={62} color="#FFFFFF" />
-        </LinearGradient>
+          <Ionicons name="swap-horizontal" size={62} color={t.colors.onPrimary} />
+        </View>
       </Animated.View>
     </View>
   );

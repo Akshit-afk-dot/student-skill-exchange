@@ -13,15 +13,7 @@ import { useTheme, type Theme } from '../theme';
 import { PressableScale } from './motion';
 import { Text } from './Text';
 
-export type ButtonVariant =
-  | 'primary'
-  | 'success'
-  | 'danger'
-  | 'secondary'
-  | 'tonal'
-  | 'ghost'
-  /** White, for use on the brand gradient. */
-  | 'inverse';
+export type ButtonVariant = 'primary' | 'success' | 'danger' | 'secondary' | 'tonal' | 'ghost';
 export type ButtonSize = 'lg' | 'md' | 'sm';
 
 const SIZES: Record<ButtonSize, { height: number; padX: number; font: number; icon: number; radius: number }> = {
@@ -44,21 +36,24 @@ function skinFor(t: Theme, variant: ButtonVariant): Skin {
     case 'success':
       return { face: t.colors.success, edge: t.colors.successEdge, label: t.colors.onSuccess };
     case 'danger':
-      return { face: t.colors.danger, edge: t.colors.dangerEdge, label: t.colors.onDanger };
+      return { face: t.colors.error, edge: t.colors.errorEdge, label: t.colors.onError };
     case 'secondary':
       return {
         face: t.colors.surface,
         edge: t.colors.neutralEdge,
-        label: t.colors.text,
-        border: t.colors.neutralEdge,
+        label: t.colors.textPrimary,
+        border: t.colors.border,
       };
     case 'tonal':
-      return { face: t.colors.primarySoft, edge: t.colors.primarySoft, label: t.colors.primary };
-    case 'inverse':
-      // Sits on the hero gradient in both themes, so its colours do not follow the theme.
-      return { face: '#FFFFFF', edge: 'rgba(22, 12, 80, 0.38)', label: '#4334C8' };
+      // Material's tonal button: the secondary container, quieter than primary.
+      return {
+        face: t.colors.secondaryContainer,
+        edge: t.colors.secondaryContainer,
+        label: t.colors.onSecondaryContainer,
+      };
     default:
-      return { face: 'transparent', edge: 'transparent', label: t.colors.text, border: t.colors.borderStrong };
+      // A text label identifies the button, so its outline can be the soft one (Material).
+      return { face: 'transparent', edge: 'transparent', label: t.colors.primary, border: t.colors.border };
   }
 }
 
@@ -108,7 +103,7 @@ export function Button({
   const inactive = disabled || loading;
 
   const skin: Skin = disabled
-    ? { face: t.colors.surfaceAlt, edge: t.colors.border, label: t.colors.textMuted }
+    ? { face: t.colors.surfaceContainer, edge: t.colors.border, label: t.colors.textSecondary }
     : skinFor(t, variant);
 
   const pressed = useSharedValue(0);
@@ -222,8 +217,8 @@ export function IconButton({
 }) {
   const t = useTheme();
   const bg =
-    tone === 'primary' ? t.colors.primarySoft : tone === 'plain' ? 'transparent' : t.colors.surface;
-  const fg = tone === 'primary' ? t.colors.primary : t.colors.text;
+    tone === 'primary' ? t.colors.primaryContainer : tone === 'plain' ? 'transparent' : t.colors.surface;
+  const fg = tone === 'primary' ? t.colors.onPrimaryContainer : t.colors.textPrimary;
 
   return (
     <PressableScale onPress={onPress} scaleTo={0.9} accessibilityLabel={accessibilityLabel}>
@@ -249,9 +244,9 @@ export function IconButton({
               width: 10,
               height: 10,
               borderRadius: 5,
-              backgroundColor: t.colors.danger,
+              backgroundColor: t.colors.error,
               borderWidth: 2,
-              borderColor: bg === 'transparent' ? t.colors.bg : bg,
+              borderColor: bg === 'transparent' ? t.colors.background : bg,
             }}
           />
         ) : null}

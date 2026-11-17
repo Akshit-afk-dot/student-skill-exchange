@@ -1,6 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { gamification } from '../api/endpoints';
+import { PressableScale, SkeletonRows } from '../components/motion';
 import {
   Avatar,
   Banner,
@@ -8,21 +12,23 @@ import {
   Caption,
   Chip,
   EmptyState,
-  Heading,
-  LoadingView,
   Row,
   Screen,
   StarRating,
+  Text,
 } from '../components/ui';
+import type { RootStackParamList } from '../navigation/types';
 import { useAsync } from '../hooks/useAsync';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
 
-/** Medal colours for the top three; everyone else gets a plain number. */
-const MEDAL: Record<number, string> = { 1: '#D4AF37', 2: '#A8A9AD', 3: '#B08D57' };
+
+/** Width of the rank column. Fixed, so names line up whatever the rank's digit count. */
+const RANK_WIDTH = 36;
 
 export function LeaderboardScreen() {
   const t = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const [scope, setScope] = useState<'global' | 'college'>('global');
 
@@ -45,7 +51,9 @@ export function LeaderboardScreen() {
       </View>
 
       {state.loading ? (
-        <LoadingView />
+        <View style={{ paddingHorizontal: t.spacing.page }}>
+          <SkeletonRows count={7} />
+        </View>
       ) : (
         <FlatList
           data={state.data?.items ?? []}
@@ -70,40 +78,110 @@ export function LeaderboardScreen() {
           )}
           renderItem={({ item }) => {
             const isMe = item.id === user?.id;
+            const medal: Record<number, string> = {
+              1: t.colors.medalGold,
+              2: t.colors.medalSilver,
+              3: t.colors.medalBronze,
+            };
+            const onMedal = medal[item.rank] !== undefined;
             return (
-              <Row
-                gap={t.spacing.md}
+              <PressableScale
+                onPress={() => navigation.navigate('StudentProfile', { userId: item.id })}
+                scaleTo={0.98}
+                accessibilityLabel={`Rank ${item.rank}, ${item.name}${isMe ? ', you' : ''}, ${item.points} points`}
+                accessibilityHint="Opens their profile"
                 style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: t.spacing.md,
                   paddingVertical: t.spacing.md,
-                  paddingHorizontal: isMe ? t.spacing.md : 0,
+                  paddingHorizontal: t.spacing.md,
+                  marginHorizontal: -t.spacing.md,
                   borderRadius: t.radius.md,
-                  backgroundColor: isMe ? t.colors.primarySoft : 'transparent',
+                  backgroundColor: isMe ? t.colors.primaryContainer : 'transparent',
                 }}
               >
-                <View style={{ width: 28, alignItems: 'center' }}>
-                  <Heading style={{ color: MEDAL[item.rank] ?? t.colors.textMuted }}>
-                    {item.rank}
-                  </Heading>
+                {/* Rank. The top three sit on a medal; the number always stays, so the
+                    order never depends on telling gold, silver and bronze apart. */}
+                <View style={{ width: RANK_WIDTH, alignItems: 'center', flexShrink: 0 }}>
+                  <View
+                    style={{
+                      minWidth: 32,
+                      height: 32,
+                      paddingHorizontal: 4,
+                      borderRadius: 16,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: medal[item.rank] ?? 'transparent',
+                      // The outline is what makes a pale medal visible on a light page.
+                      borderWidth: onMedal ? 1.5 : 0,
+                      borderColor: t.colors.outline,
+                    }}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.6}
+                      style={{
+                        fontSize: item.rank >= 100 ? 13 : 16,
+                        lineHeight: 20,
+                        fontWeight: '800',
+                        fontVariant: ['tabular-nums'],
+                        color: onMedal ? t.colors.onMedal : t.colors.textSecondary,
+                      }}
+                    >
+                      {item.rank}
+                    </Text>
+                  </View>
                 </View>
 
                 <Avatar name={item.name} uri={item.profileImage} size={40} />
 
-                <View style={{ flex: 1 }}>
-                  <Heading numberOfLines={1}>
-                    {item.name}
-                    {isMe ? ' (you)' : ''}
-                  </Heading>
-                  <Row gap={t.spacing.md} style={{ marginTop: 2 }}>
-                    {item.college ? <Caption numberOfLines={1}>{item.college}</Caption> : null}
-                    <StarRating value={item.rating} showValue />
+                {/* The only column that gives way: long names and colleges truncate here
+                    instead of running under the points. */}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Row gap={6}>
+                    <Text
+                      numberOfLines={1}
+                      style={{ flexShrink: 1, fontSize: 16, lineHeight: 22, fontWeight: '700', color: t.colors.textPrimary }}
+                    >
+                      {item.name}
+                    </Text>
+                    {/* A tag rather than "(you)" in the name, so truncation never eats it. */}
+                    {isMe ? <Chip label="You" tone="primary" /> : null}
+                  </Row>
+                  <Row gap={t.spacing.sm} style={{ marginTop: 2 }}>
+                    {item.college ? (
+                      <Caption numberOfLines={1} style={{ flexShrink: 1 }}>
+                        {item.college}
+                      </Caption>
+                    ) : null}
+                    {item.rating > 0 ? (
+                      <View style={{ flexShrink: 0 }}>
+                        <StarRating value={item.rating} size={12} />
+                      </View>
+                    ) : null}
                   </Row>
                 </View>
 
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Heading>{item.points}</Heading>
-                  <Caption>{item.sessionsTaught} taught</Caption>
+                <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontSize: 17,
+                      lineHeight: 22,
+                      fontWeight: '800',
+                      fontVariant: ['tabular-nums'],
+                      color: t.colors.textPrimary,
+                    }}
+                  >
+                    {item.points}
+                  </Text>
+                  <Caption numberOfLines={1}>{item.sessionsTaught} taught</Caption>
                 </View>
-              </Row>
+
+                <Ionicons name="chevron-forward" size={16} color={t.colors.textSecondary} />
+              </PressableScale>
             );
           }}
         />

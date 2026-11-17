@@ -57,6 +57,7 @@ export async function markRead(userId: string, ids: string[]): Promise<number> {
     { user: userId, _id: { $in: ids }, read: false },
     { $set: { read: true, readAt: new Date() } },
   );
+  if (result.modifiedCount > 0) emitToUser(userId, RT.NOTIFICATION_READ, { count: result.modifiedCount });
   return result.modifiedCount;
 }
 
@@ -65,7 +66,33 @@ export async function markAllRead(userId: string): Promise<number> {
     { user: userId, read: false },
     { $set: { read: true, readAt: new Date() } },
   );
+  if (result.modifiedCount > 0) emitToUser(userId, RT.NOTIFICATION_READ, { count: result.modifiedCount });
   return result.modifiedCount;
+}
+
+/**
+ * Clears a user's notifications about one thing once they have dealt with it: read the
+ * chat, answered the request, confirmed the session, written the review. The app's
+ * notification centre lists only what still needs attention, so this is what takes an
+ * entry off it without the student having to dismiss it by hand.
+ *
+ * `data` narrows the match to the thing in question (a conversation, request or session).
+ * Best-effort, like `notify`: a failure here must not fail the action that triggered it.
+ */
+export async function resolveNotifications(
+  user: string | Types.ObjectId,
+  types: NotificationType[],
+  data: Record<string, string>,
+): Promise<void> {
+  const userId = String(user);
+  try {
+    const filter: Record<string, unknown> = { user: userId, read: false, type: { $in: types } };
+    for (const [key, value] of Object.entries(data)) filter[`data.${key}`] = value;
+    const result = await Notification.updateMany(filter, { $set: { read: true, readAt: new Date() } });
+    if (result.modifiedCount > 0) emitToUser(userId, RT.NOTIFICATION_READ, { count: result.modifiedCount });
+  } catch (err) {
+    logger.error({ err, userId, types }, 'Failed to resolve notifications');
+  }
 }
 
 export async function unreadCount(userId: string): Promise<number> {

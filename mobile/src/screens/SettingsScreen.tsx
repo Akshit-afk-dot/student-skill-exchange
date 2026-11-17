@@ -83,7 +83,7 @@ function HapticsCard() {
         <Row gap={t.spacing.md} style={{ marginBottom: t.spacing.md }}>
           <IconTile icon="pulse" tone="primary" size={38} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 16, lineHeight: 22, fontWeight: '600', color: t.colors.text }}>Vibration</Text>
+            <Text style={{ fontSize: 16, lineHeight: 22, fontWeight: '600', color: t.colors.textPrimary }}>Vibration</Text>
             <Caption>How much the app talks back through your hand</Caption>
           </View>
         </Row>
@@ -107,7 +107,7 @@ function HapticsCard() {
         {Platform.OS === 'android' && level !== 'off' ? (
           <FadeInView>
             <Divider spacing={t.spacing.lg} />
-            <Text style={{ fontSize: 14, lineHeight: 19, fontWeight: '600', color: t.colors.text, marginBottom: 8 }}>
+            <Text style={{ fontSize: 14, lineHeight: 19, fontWeight: '600', color: t.colors.textPrimary, marginBottom: 8 }}>
               Vibration style
             </Text>
             <Segmented<AndroidEngine>
@@ -128,7 +128,7 @@ function HapticsCard() {
         {level !== 'off' ? (
           <>
             <Divider spacing={t.spacing.lg} />
-            <Text style={{ fontSize: 14, lineHeight: 19, fontWeight: '600', color: t.colors.text, marginBottom: 8 }}>
+            <Text style={{ fontSize: 14, lineHeight: 19, fontWeight: '600', color: t.colors.textPrimary, marginBottom: 8 }}>
               Feel it
             </Text>
             <Row gap={t.spacing.sm} style={{ flexWrap: 'wrap' }}>
@@ -200,7 +200,7 @@ export function SettingsScreen() {
         <Row gap={t.spacing.md}>
           <Avatar name={user?.name ?? '?'} uri={user?.profileImage} size={56} />
           <View style={{ flex: 1 }}>
-            <Text numberOfLines={1} style={[t.typography.heading, { color: t.colors.text }]}>
+            <Text numberOfLines={1} style={[t.typography.heading, { color: t.colors.textPrimary }]}>
               {user?.name}
             </Text>
             <Row gap={5}>
@@ -236,7 +236,6 @@ export function SettingsScreen() {
         <Divider spacing={0} />
         <ListRow
           icon="layers"
-          tone="teach"
           title="My skills"
           subtitle="What you teach and want to learn"
           onPress={() => navigation.navigate('MySkills')}
@@ -256,7 +255,7 @@ export function SettingsScreen() {
               </Body>
             </View>
           ) : !changingPassword ? (
-            <ListRow icon="key" tone="accent" title="Change password" onPress={() => setChangingPassword(true)} />
+            <ListRow icon="key" title="Change password" onPress={() => setChangingPassword(true)} />
           ) : (
             <FadeInView>
               <Field label="Current password" error={changePassword.fieldErrors?.currentPassword}>
@@ -305,7 +304,6 @@ export function SettingsScreen() {
       <Group title="Safety">
         <ListRow
           icon="ban"
-          tone="warning"
           title="Blocked students"
           subtitle="People you have blocked"
           onPress={() => navigation.navigate('BlockedUsers')}
@@ -313,11 +311,11 @@ export function SettingsScreen() {
       </Group>
 
       <Group title="About">
-        <ListRow icon="shield-checkmark" tone="success" title="Privacy policy" external onPress={() => openPage(LEGAL_URLS.privacy)} />
+        <ListRow icon="shield-checkmark" title="Privacy policy" external onPress={() => openPage(LEGAL_URLS.privacy)} />
         <Divider spacing={0} />
-        <ListRow icon="document-text" tone="neutral" title="Terms of use" external onPress={() => openPage(LEGAL_URLS.terms)} />
+        <ListRow icon="document-text" title="Terms of use" external onPress={() => openPage(LEGAL_URLS.terms)} />
         <Divider spacing={0} />
-        <ListRow icon="mail" tone="accent" title="Contact support" external onPress={contactSupport} />
+        <ListRow icon="mail" title="Contact support" external onPress={contactSupport} />
       </Group>
 
       <Group title="Session">

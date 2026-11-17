@@ -1,12 +1,12 @@
-import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, NavigationContainer, useFocusEffect } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, AppState, View } from 'react-native';
 import { chat, requests } from '../api/endpoints';
 import { RT, onEvent } from '../api/socket';
 import { useAuth } from '../store/auth';
-import { useTheme } from '../theme';
+import { palettes, useTheme } from '../theme';
 import { TabBar } from './TabBar';
 
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
@@ -63,21 +63,28 @@ function AuthNavigator() {
 function TabNavigator() {
   const [unreadChats, setUnreadChats] = useState(0);
 
-  // Badge counts are polled once on mount and then kept current by socket events,
-  // rather than polled on a timer.
-  useEffect(() => {
-    const refresh = () => {
-      void chat.unreadCount().then((r) => setUnreadChats(r.count)).catch(() => undefined);
-    };
-    refresh();
+  const refreshUnread = useCallback(() => {
+    void chat.unreadCount().then((r) => setUnreadChats(r.count)).catch(() => undefined);
+  }, []);
 
-    const offMessage = onEvent(RT.MESSAGE_NEW, refresh);
-    const offRead = onEvent(RT.MESSAGE_READ, refresh);
+  // Kept current by socket events: a new message raises it, and reading a chat (on this
+  // device or another) lowers it, because the server tells the reader too.
+  useEffect(() => {
+    const offMessage = onEvent(RT.MESSAGE_NEW, refreshUnread);
+    const offRead = onEvent(RT.MESSAGE_READ, refreshUnread);
+    // Events can be missed while the app is in the background, so check on return.
+    const appState = AppState.addEventListener('change', (next) => {
+      if (next === 'active') refreshUnread();
+    });
     return () => {
       offMessage();
       offRead();
+      appState.remove();
     };
-  }, []);
+  }, [refreshUnread]);
+
+  // And whenever the tabs come back into view, such as on leaving a chat.
+  useFocusEffect(refreshUnread);
 
   return (
     <Tabs.Navigator tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
@@ -100,8 +107,8 @@ function RootNavigator() {
   return (
     <RootStack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: t.colors.bg },
-        headerTintColor: t.colors.text,
+        headerStyle: { backgroundColor: t.colors.background },
+        headerTintColor: t.colors.textPrimary,
         // The family carries the weight; a fontWeight here would fake-bold it on Android.
         headerTitleStyle: { fontFamily: t.fonts.bold, fontSize: 17 },
         headerTitleAlign: 'center',
@@ -109,7 +116,7 @@ function RootNavigator() {
         // Just the chevron: the previous screen's title beside it is noise.
         headerBackButtonDisplayMode: 'minimal',
         animation: 'slide_from_right',
-        contentStyle: { backgroundColor: t.colors.bg },
+        contentStyle: { backgroundColor: t.colors.background },
       }}
     >
       <RootStack.Screen name="Tabs" component={TabNavigator} options={{ headerShown: false }} />
@@ -222,8 +229,8 @@ export function Navigation() {
   if (initialising) {
     // The same colour as the launch screen, so startup reads as one continuous moment.
     return (
-      <View style={{ flex: 1, backgroundColor: '#5B4BE8', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#FFFFFF" size="large" accessibilityLabel="Loading" />
+      <View style={{ flex: 1, backgroundColor: palettes.light.primary, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={palettes.light.onPrimary} size="large" accessibilityLabel="Loading" />
       </View>
     );
   }
@@ -243,9 +250,9 @@ export function Navigation() {
         fonts: navFonts,
         colors: {
           ...DarkTheme.colors,
-          background: t.colors.bg,
+          background: t.colors.background,
           card: t.colors.surface,
-          text: t.colors.text,
+          text: t.colors.textPrimary,
           border: t.colors.border,
           primary: t.colors.primary,
         },
@@ -255,9 +262,9 @@ export function Navigation() {
         fonts: navFonts,
         colors: {
           ...DefaultTheme.colors,
-          background: t.colors.bg,
+          background: t.colors.background,
           card: t.colors.surface,
-          text: t.colors.text,
+          text: t.colors.textPrimary,
           border: t.colors.border,
           primary: t.colors.primary,
         },

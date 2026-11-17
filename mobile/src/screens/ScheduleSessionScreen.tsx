@@ -169,18 +169,20 @@ export function ScheduleSessionScreen() {
                     borderRadius: t.radius.md,
                     alignItems: 'center',
                     minWidth: 58,
-                    backgroundColor: active ? t.colors.primary : t.colors.surface,
-                    borderWidth: 1,
+                    // Selected like every other choice in the app: the secondary container
+                    // with a heavier brand outline, not a solid fill competing with the CTA.
+                    backgroundColor: active ? t.colors.secondaryContainer : t.colors.surface,
+                    borderWidth: active ? 2 : 1,
                     borderColor: active ? t.colors.primary : t.colors.border,
                   }}
                 >
-                  <Caption style={{ color: active ? t.colors.onPrimary : t.colors.textMuted }}>
+                  <Caption style={{ color: active ? t.colors.onSecondaryContainer : t.colors.textSecondary }}>
                     {d.format('ddd')}
                   </Caption>
-                  <Body style={{ color: active ? t.colors.onPrimary : t.colors.text }}>
+                  <Body style={{ color: active ? t.colors.onSecondaryContainer : t.colors.textPrimary, fontWeight: active ? '800' : '400' }}>
                     {d.format('D')}
                   </Body>
-                  <Caption style={{ color: active ? t.colors.onPrimary : t.colors.textMuted }}>
+                  <Caption style={{ color: active ? t.colors.onSecondaryContainer : t.colors.textSecondary }}>
                     {d.format('MMM')}
                   </Caption>
                 </Pressable>
@@ -269,7 +271,7 @@ export function ScheduleSessionScreen() {
 
       <View
         style={{
-          backgroundColor: t.colors.surfaceAlt,
+          backgroundColor: t.colors.surfaceContainer,
           borderRadius: t.radius.md,
           padding: t.spacing.md,
           marginBottom: t.spacing.lg,

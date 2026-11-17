@@ -3,12 +3,13 @@ import { useNavigation, useRoute, type RouteProp } from '@react-navigation/nativ
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, TextInput, View } from 'react-native';
+import { KeyboardController, useKeyboardHandler } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
   FadeIn,
-  SlideInLeft,
-  SlideInRight,
+  FadeInDown,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -97,7 +98,7 @@ function TypingDot({ index, still }: { index: number; still: boolean }) {
     opacity: 0.45 + lift.value * 0.55,
     transform: [{ translateY: -lift.value * 4 }],
   }));
-  return <Animated.View style={[{ width: 7, height: 7, borderRadius: 4, backgroundColor: t.colors.textMuted }, style]} />;
+  return <Animated.View style={[{ width: 7, height: 7, borderRadius: 4, backgroundColor: t.colors.textSecondary }, style]} />;
 }
 
 /** The round send button. Springs up into view once there is something to send. */
@@ -123,7 +124,7 @@ function SendButton({ active, sending, onPress }: { active: boolean; sending: bo
             width: 44,
             height: 44,
             borderRadius: 22,
-            backgroundColor: active ? t.colors.primary : t.colors.surfaceAlt,
+            backgroundColor: active ? t.colors.primary : t.colors.surfaceContainer,
             alignItems: 'center',
             justifyContent: 'center',
           },
@@ -133,7 +134,7 @@ function SendButton({ active, sending, onPress }: { active: boolean; sending: bo
         {sending ? (
           <ActivityIndicator size="small" color={t.colors.onPrimary} />
         ) : (
-          <Ionicons name="arrow-up" size={22} color={active ? t.colors.onPrimary : t.colors.textMuted} />
+          <Ionicons name="arrow-up" size={22} color={active ? t.colors.onPrimary : t.colors.textSecondary} />
         )}
       </Animated.View>
     </Pressable>
@@ -157,6 +158,44 @@ export function ChatScreen() {
 
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const input = useRef<TextInput>(null);
+  /**
+   * Messages sent or received while the chat is open. Only these animate in; history
+   * is already there when you arrive, so it just appears.
+   */
+  const fresh = useRef(new Set<string>());
+  /**
+   * The space under the message bar: the keyboard's height while it is up, the system
+   * navigation area while it is down. It follows the keyboard frame by frame, so the bar
+   * rests right on the keyboard the whole way up and the messages above give up the room.
+   *
+   * Both numbers are measured from the bottom of the screen, which is where this screen
+   * ends, so no header height or screen position is involved. This is the only thing in
+   * the screen that reacts to the keyboard.
+   */
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useSharedValue(KeyboardController.state().height);
+  useKeyboardHandler(
+    {
+      onMove: (e) => {
+        'worklet';
+        keyboardHeight.value = e.height;
+      },
+      // Dragging the keyboard down (iOS) moves the bar with your finger.
+      onInteractive: (e) => {
+        'worklet';
+        keyboardHeight.value = e.height;
+      },
+      onEnd: (e) => {
+        'worklet';
+        keyboardHeight.value = e.height;
+      },
+    },
+    [],
+  );
+  const keyboardSpace = useAnimatedStyle(
+    () => ({ height: Math.max(keyboardHeight.value, insets.bottom) }),
+    [insets.bottom],
+  );
   const firstName = partnerName.split(' ')[0] ?? partnerName;
 
   // The header is the person: avatar and name, with their typing state under it.
@@ -172,10 +211,10 @@ export function ChatScreen() {
           <Row gap={10}>
             <Avatar name={partnerName} size={34} />
             <View>
-              <Text numberOfLines={1} style={{ fontSize: 16, lineHeight: 20, fontWeight: '700', color: t.colors.text }}>
+              <Text numberOfLines={1} style={{ fontSize: 16, lineHeight: 20, fontWeight: '700', color: t.colors.textPrimary }}>
                 {partnerName}
               </Text>
-              <Text style={{ fontSize: 12, lineHeight: 16, color: partnerTyping ? t.colors.primary : t.colors.textMuted }}>
+              <Text style={{ fontSize: 12, lineHeight: 16, color: partnerTyping ? t.colors.primary : t.colors.textSecondary }}>
                 {partnerTyping ? 'typing…' : 'Tap for profile'}
               </Text>
             </View>
@@ -221,6 +260,7 @@ export function ChatScreen() {
         // copy is already in the list, so drop the duplicate.
         if (prev.some((m) => m._id === incoming._id)) return prev;
         if (senderOf(incoming) !== user?.id) haptics.messageReceived();
+        fresh.current.add(incoming._id);
         return [incoming, ...prev];
       });
       setPartnerTyping(false);
@@ -261,6 +301,7 @@ export function ChatScreen() {
 
     try {
       const message = await chat.send(conversationId, { body, type: 'TEXT' });
+      fresh.current.add(message._id);
       setMessages((prev) => (prev.some((m) => m._id === message._id) ? prev : [message, ...prev]));
     } catch (err) {
       haptics.error();
@@ -289,186 +330,180 @@ export function ChatScreen() {
 
   if (loading) return <LoadingView />;
 
-  const spring = t.motion.springs.spatial;
+  // A short rise and fade from where the message bar is: present, but never a wiggle.
+  const arrival = FadeInDown.duration(t.motion.normal).withInitialValues({
+    opacity: 0,
+    transform: [{ translateY: 8 }],
+  });
 
   return (
-    <Screen padded={false} edges={['bottom']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 96 : 0}
+    <Screen padded={false} edges={[]}>
+      {error ? (
+        <View style={{ paddingHorizontal: t.spacing.page, paddingTop: t.spacing.md }}>
+          <Banner tone="danger" text={error} />
+        </View>
+      ) : null}
+
+      {messages.length === 0 ? (
+        // Nothing said yet: a friendly opening and a few ways to start, so the first
+        // message is one tap instead of a blank box.
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: t.spacing.xl }}>
+          <Avatar name={partnerName} size={84} />
+          <Text style={[t.typography.heading, { color: t.colors.textPrimary, marginTop: t.spacing.md }]}>
+            Say hello to {firstName}
+          </Text>
+          <Body muted small style={{ textAlign: 'center', marginTop: 4, maxWidth: 280 }}>
+            You are connected. Plan a time to meet, or just introduce yourself.
+          </Body>
+          <View style={{ gap: t.spacing.sm, marginTop: t.spacing.xl, alignItems: 'center' }}>
+            {STARTERS.map((line) => (
+              <Chip key={line} label={line} onPress={() => void send(line)} />
+            ))}
+          </View>
+        </View>
+      ) : (
+        <FlatList
+          data={messages}
+          keyExtractor={(item) => item._id}
+          // Newest at the bottom: the list renders reversed so new messages appear
+          // without any manual scrolling.
+          inverted
+          contentContainerStyle={{ paddingHorizontal: t.spacing.page, paddingVertical: t.spacing.md }}
+          onEndReached={loadOlder}
+          onEndReachedThreshold={0.4}
+          showsVerticalScrollIndicator={false}
+          keyboardDismissMode="interactive"
+          ListHeaderComponent={partnerTyping ? <TypingBubble /> : null}
+          ListFooterComponent={
+            loadingMore ? <ActivityIndicator color={t.colors.primary} style={{ margin: 12 }} /> : null
+          }
+          renderItem={({ item, index }) => {
+            const mine = senderOf(item) === user?.id;
+            // The list is inverted: index - 1 is the next newer message, index + 1 the older.
+            const newer = messages[index - 1];
+            const older = messages[index + 1];
+            const sameAsNewer =
+              newer !== undefined &&
+              senderOf(newer) === senderOf(item) &&
+              dayjs(newer.createdAt).diff(item.createdAt) < GROUP_GAP_MS;
+            const sameAsOlder =
+              older !== undefined &&
+              senderOf(older) === senderOf(item) &&
+              dayjs(item.createdAt).diff(older.createdAt) < GROUP_GAP_MS;
+            const newDay = !older || !dayjs(older.createdAt).isSame(item.createdAt, 'day');
+            const lastInGroup = !sameAsNewer;
+            const joinedAbove = sameAsOlder && !newDay;
+            const big = t.radius.lg;
+            const small = 6;
+
+            return (
+              <View style={{ marginTop: joinedAbove ? 3 : t.spacing.md }}>
+                {newDay ? (
+                  <View style={{ alignItems: 'center', marginBottom: t.spacing.md }}>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        lineHeight: 16,
+                        fontWeight: '700',
+                        color: t.colors.textSecondary,
+                        backgroundColor: t.colors.surfaceContainer,
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        borderRadius: 10,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {dayLabel(item.createdAt)}
+                    </Text>
+                  </View>
+                ) : null}
+                <Animated.View
+                  entering={LAYOUT_ANIMATIONS_SUPPORTED && fresh.current.has(item._id) ? arrival : undefined}
+                  style={{
+                    alignSelf: mine ? 'flex-end' : 'flex-start',
+                    maxWidth: '80%',
+                    backgroundColor: mine ? t.colors.primary : t.colors.surface,
+                    borderRadius: big,
+                    // The corner nearest the sender tightens inside a group, so a run of
+                    // messages reads as one block with a single tail at the end.
+                    borderTopRightRadius: mine && joinedAbove ? small : big,
+                    borderBottomRightRadius: mine ? small : big,
+                    borderTopLeftRadius: !mine && joinedAbove ? small : big,
+                    borderBottomLeftRadius: mine ? big : small,
+                    paddingHorizontal: 14,
+                    paddingVertical: 9,
+                    borderWidth: mine ? 0 : 1,
+                    borderColor: t.colors.border,
+                  }}
+                >
+                  <Body style={{ color: mine ? t.colors.onPrimary : t.colors.textPrimary }}>{item.body}</Body>
+                </Animated.View>
+                {lastInGroup ? (
+                  <Row gap={4} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', marginTop: 4, marginHorizontal: 4 }}>
+                    <Caption style={{ fontSize: 11.5 }}>{dayjs(item.createdAt).format('h:mm A')}</Caption>
+                    {mine ? (
+                      <Ionicons
+                        name={item.readAt ? 'checkmark-done' : 'checkmark'}
+                        size={14}
+                        color={item.readAt ? t.colors.primary : t.colors.textSecondary}
+                        accessibilityLabel={item.readAt ? 'Read' : 'Sent'}
+                      />
+                    ) : null}
+                  </Row>
+                ) : null}
+              </View>
+            );
+          }}
+        />
+      )}
+
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          gap: t.spacing.sm,
+          paddingHorizontal: t.spacing.md,
+          paddingVertical: t.spacing.sm,
+          borderTopWidth: 1,
+          borderTopColor: t.colors.border,
+          backgroundColor: t.colors.surface,
+        }}
       >
-        {error ? (
-          <View style={{ paddingHorizontal: t.spacing.page, paddingTop: t.spacing.md }}>
-            <Banner tone="danger" text={error} />
-          </View>
-        ) : null}
-
-        {messages.length === 0 ? (
-          // Nothing said yet: a friendly opening and a few ways to start, so the first
-          // message is one tap instead of a blank box.
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: t.spacing.xl }}>
-            <Avatar name={partnerName} size={84} />
-            <Text style={[t.typography.heading, { color: t.colors.text, marginTop: t.spacing.md }]}>
-              Say hello to {firstName}
-            </Text>
-            <Body muted small style={{ textAlign: 'center', marginTop: 4, maxWidth: 280 }}>
-              You are connected. Plan a time to meet, or just introduce yourself.
-            </Body>
-            <View style={{ gap: t.spacing.sm, marginTop: t.spacing.xl, alignItems: 'center' }}>
-              {STARTERS.map((line) => (
-                <Chip key={line} label={line} onPress={() => void send(line)} />
-              ))}
-            </View>
-          </View>
-        ) : (
-          <FlatList
-            data={messages}
-            keyExtractor={(item) => item._id}
-            // Newest at the bottom: the list renders reversed so new messages appear
-            // without any manual scrolling.
-            inverted
-            contentContainerStyle={{ paddingHorizontal: t.spacing.page, paddingVertical: t.spacing.md }}
-            onEndReached={loadOlder}
-            onEndReachedThreshold={0.4}
-            showsVerticalScrollIndicator={false}
-            keyboardDismissMode="interactive"
-            ListHeaderComponent={partnerTyping ? <TypingBubble /> : null}
-            ListFooterComponent={
-              loadingMore ? <ActivityIndicator color={t.colors.primary} style={{ margin: 12 }} /> : null
-            }
-            renderItem={({ item, index }) => {
-              const mine = senderOf(item) === user?.id;
-              // The list is inverted: index - 1 is the next newer message, index + 1 the older.
-              const newer = messages[index - 1];
-              const older = messages[index + 1];
-              const sameAsNewer =
-                newer !== undefined &&
-                senderOf(newer) === senderOf(item) &&
-                dayjs(newer.createdAt).diff(item.createdAt) < GROUP_GAP_MS;
-              const sameAsOlder =
-                older !== undefined &&
-                senderOf(older) === senderOf(item) &&
-                dayjs(item.createdAt).diff(older.createdAt) < GROUP_GAP_MS;
-              const newDay = !older || !dayjs(older.createdAt).isSame(item.createdAt, 'day');
-              const lastInGroup = !sameAsNewer;
-              const joinedAbove = sameAsOlder && !newDay;
-              const big = t.radius.lg;
-              const small = 6;
-
-              return (
-                <View style={{ marginTop: joinedAbove ? 3 : t.spacing.md }}>
-                  {newDay ? (
-                    <View style={{ alignItems: 'center', marginBottom: t.spacing.md }}>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          lineHeight: 16,
-                          fontWeight: '700',
-                          color: t.colors.textMuted,
-                          backgroundColor: t.colors.surfaceAlt,
-                          paddingHorizontal: 10,
-                          paddingVertical: 4,
-                          borderRadius: 10,
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {dayLabel(item.createdAt)}
-                      </Text>
-                    </View>
-                  ) : null}
-                  <Animated.View
-                    // Bubbles slide in from the side they belong to, so a new message
-                    // reads as arriving rather than simply appearing.
-                    entering={
-                      LAYOUT_ANIMATIONS_SUPPORTED
-                        ? (mine ? SlideInRight : SlideInLeft).springify().damping(spring.damping).stiffness(spring.stiffness)
-                        : undefined
-                    }
-                    style={{
-                      alignSelf: mine ? 'flex-end' : 'flex-start',
-                      maxWidth: '80%',
-                      backgroundColor: mine ? t.colors.primary : t.colors.surface,
-                      borderRadius: big,
-                      // The corner nearest the sender tightens inside a group, so a run of
-                      // messages reads as one block with a single tail at the end.
-                      borderTopRightRadius: mine && joinedAbove ? small : big,
-                      borderBottomRightRadius: mine ? small : big,
-                      borderTopLeftRadius: !mine && joinedAbove ? small : big,
-                      borderBottomLeftRadius: mine ? big : small,
-                      paddingHorizontal: 14,
-                      paddingVertical: 9,
-                      borderWidth: mine ? 0 : 1,
-                      borderColor: t.colors.border,
-                    }}
-                  >
-                    <Body style={{ color: mine ? t.colors.onPrimary : t.colors.text }}>{item.body}</Body>
-                  </Animated.View>
-                  {lastInGroup ? (
-                    <Row gap={4} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', marginTop: 4, marginHorizontal: 4 }}>
-                      <Caption style={{ fontSize: 11.5 }}>{dayjs(item.createdAt).format('h:mm A')}</Caption>
-                      {mine ? (
-                        <Ionicons
-                          name={item.readAt ? 'checkmark-done' : 'checkmark'}
-                          size={14}
-                          color={item.readAt ? t.colors.primary : t.colors.textMuted}
-                          accessibilityLabel={item.readAt ? 'Read' : 'Sent'}
-                        />
-                      ) : null}
-                    </Row>
-                  ) : null}
-                </View>
-              );
-            }}
-          />
-        )}
-
         <View
           style={{
-            flexDirection: 'row',
-            alignItems: 'flex-end',
-            gap: t.spacing.sm,
-            paddingHorizontal: t.spacing.md,
-            paddingVertical: t.spacing.sm,
-            borderTopWidth: 1,
-            borderTopColor: t.colors.border,
-            backgroundColor: t.colors.bgElevated,
+            flex: 1,
+            minHeight: 44,
+            justifyContent: 'center',
+            backgroundColor: t.colors.surfaceContainer,
+            borderRadius: 22,
+            paddingHorizontal: 16,
           }}
         >
-          <View
+          <TextInput
+            ref={input}
+            value={draft}
+            onChangeText={onChangeDraft}
+            placeholder={`Message ${firstName}`}
+            placeholderTextColor={t.colors.textSecondary}
+            selectionColor={t.colors.primary}
+            multiline
+            maxLength={4000}
+            accessibilityLabel="Message"
             style={{
-              flex: 1,
-              minHeight: 44,
-              justifyContent: 'center',
-              backgroundColor: t.colors.surfaceAlt,
-              borderRadius: 22,
-              paddingHorizontal: 16,
+              fontFamily: t.fonts.regular,
+              fontSize: 16,
+              lineHeight: 21,
+              color: t.colors.textPrimary,
+              maxHeight: 120,
+              paddingTop: Platform.OS === 'ios' ? 12 : 8,
+              paddingBottom: Platform.OS === 'ios' ? 12 : 8,
             }}
-          >
-            <TextInput
-              ref={input}
-              value={draft}
-              onChangeText={onChangeDraft}
-              placeholder={`Message ${firstName}`}
-              placeholderTextColor={t.colors.textMuted}
-              selectionColor={t.colors.primary}
-              multiline
-              maxLength={4000}
-              accessibilityLabel="Message"
-              style={{
-                fontFamily: t.fonts.regular,
-                fontSize: 16,
-                lineHeight: 21,
-                color: t.colors.text,
-                maxHeight: 120,
-                paddingTop: Platform.OS === 'ios' ? 12 : 8,
-                paddingBottom: Platform.OS === 'ios' ? 12 : 8,
-              }}
-            />
-          </View>
-          <SendButton active={draft.trim().length > 0} sending={sending} onPress={() => void send()} />
+          />
         </View>
-      </KeyboardAvoidingView>
+        <SendButton active={draft.trim().length > 0} sending={sending} onPress={() => void send()} />
+      </View>
+      {/* Keeps the bar on the keyboard; see keyboardSpace above. */}
+      <Animated.View style={keyboardSpace} />
     </Screen>
   );
 }

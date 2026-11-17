@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
 import {
   Banner,
@@ -71,7 +71,7 @@ function Rule({ label, met }: { label: string; met: boolean }) {
         <Ionicons
           name={met ? 'checkmark-circle' : 'ellipse-outline'}
           size={16}
-          color={met ? t.colors.success : t.colors.textMuted}
+          color={met ? t.colors.success : t.colors.textSecondary}
         />
       </Animated.View>
       <Text
@@ -79,7 +79,7 @@ function Rule({ label, met }: { label: string; met: boolean }) {
           fontSize: 13,
           lineHeight: 17,
           fontWeight: met ? '600' : '500',
-          color: met ? t.colors.success : t.colors.textMuted,
+          color: met ? t.colors.success : t.colors.textSecondary,
         }}
       >
         {label}
@@ -119,7 +119,8 @@ export function RegisterScreen() {
 
   return (
     <Screen scroll>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Screen keeps the focused field clear of the keyboard. */}
+      <View>
         <AuthHeader
           title="Create your account"
           subtitle="It takes a minute. Your college details help us find students near you."
@@ -218,7 +219,7 @@ export function RegisterScreen() {
             onChange={setAccepted}
             accessibilityLabel="I am 18 or older and agree to the terms of use and privacy policy"
           >
-            <Text style={{ color: t.colors.text, fontSize: 14, lineHeight: 21 }}>
+            <Text style={{ color: t.colors.textPrimary, fontSize: 14, lineHeight: 21 }}>
               I am 18 or older and agree to the{' '}
               <Text
                 onPress={() => openPage(LEGAL_URLS.terms)}
@@ -255,7 +256,7 @@ export function RegisterScreen() {
           <Body muted>Already registered?</Body>
           <TextButton label="Sign in" onPress={() => navigation.navigate('Login')} />
         </Row>
-      </KeyboardAvoidingView>
+      </View>
     </Screen>
   );
 }

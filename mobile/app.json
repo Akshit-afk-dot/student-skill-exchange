@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#5B4BE8"
+      "backgroundColor": "#5054B1"
     },
     "ios": {
       "supportsTablet": true,
@@ -24,7 +24,7 @@
     "android": {
       "package": "com.akshitkumar.skillexchange",
       "adaptiveIcon": {
-        "backgroundColor": "#5B4BE8",
+        "backgroundColor": "#5054B1",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

@@ -30,7 +30,7 @@ function ConversationRow({ item, index, onPress }: { item: ConversationView; ind
           paddingHorizontal: t.spacing.md,
           marginHorizontal: -t.spacing.md,
           borderRadius: t.radius.lg,
-          backgroundColor: unread ? t.colors.primarySoft : 'transparent',
+          backgroundColor: unread ? t.colors.primaryContainer : 'transparent',
         }}
       >
         <Avatar
@@ -43,7 +43,7 @@ function ConversationRow({ item, index, onPress }: { item: ConversationView; ind
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
             <Text
               numberOfLines={1}
-              style={{ flex: 1, fontSize: 16, lineHeight: 22, fontWeight: unread ? '800' : '600', color: t.colors.text }}
+              style={{ flex: 1, fontSize: 16, lineHeight: 22, fontWeight: unread ? '800' : '600', color: t.colors.textPrimary }}
             >
               {item.participant.name}
             </Text>
@@ -53,7 +53,7 @@ function ConversationRow({ item, index, onPress }: { item: ConversationView; ind
                   fontSize: 12.5,
                   lineHeight: 17,
                   fontWeight: unread ? '700' : '500',
-                  color: unread ? t.colors.primary : t.colors.textMuted,
+                  color: unread ? t.colors.onPrimaryContainer : t.colors.textSecondary,
                 }}
               >
                 {chatTimestamp(item.lastMessage.at)}
@@ -68,7 +68,7 @@ function ConversationRow({ item, index, onPress }: { item: ConversationView; ind
                 fontSize: 14,
                 lineHeight: 20,
                 fontWeight: unread ? '600' : '400',
-                color: unread ? t.colors.text : t.colors.textMuted,
+                color: unread ? t.colors.textPrimary : t.colors.textSecondary,
               }}
             >
               {item.lastMessage?.body ?? 'You are connected. Say hello 👋'}

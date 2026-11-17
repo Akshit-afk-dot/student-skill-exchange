@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { gamification, matching, notifications, requests, sessions } from '../api/endpoints';
+import { RT, onEvent } from '../api/socket';
 import { MATCH_PEEK_WIDTH, MatchPeek, SessionCard } from '../components/cards';
 import { FadeInView, PressableScale, Skeleton } from '../components/motion';
 import {
@@ -39,7 +39,7 @@ function greeting(now = new Date()): string {
 }
 
 /**
- * The one thing worth doing next, on the brand gradient. It changes with the student's
+ * The one thing worth doing next, on a soft brand container. It changes with the student's
  * situation, so the top of Home is always an answer to "what now?" rather than a banner
  * that says the same thing every day.
  */
@@ -61,71 +61,55 @@ function NextUpCard({
   const t = useTheme();
   return (
     <FadeInView style={{ marginBottom: t.spacing.xl }}>
-      <LinearGradient
-        colors={t.gradients.hero}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[{ borderRadius: t.radius.xl, padding: t.spacing.xl, overflow: 'hidden' }, t.elevation(3)]}
+      {/* A soft brand container, not a loud fill: the button is the one vivid thing on it,
+          so the eye lands on the action. */}
+      <View
+        style={{
+          borderRadius: t.radius.xl,
+          padding: t.spacing.xl,
+          backgroundColor: t.colors.primaryContainer,
+        }}
       >
-        {/* Two faint rings in the corner give the flat gradient some depth. */}
         <View
           style={{
             position: 'absolute',
-            right: -60,
-            top: -60,
-            width: 200,
-            height: 200,
-            borderRadius: 100,
-            borderWidth: 28,
-            borderColor: 'rgba(255,255,255,0.08)',
-          }}
-        />
-        <View
-          style={{
-            position: 'absolute',
-            right: 28,
-            top: 26,
+            right: t.spacing.xl,
+            top: t.spacing.xl,
             width: 44,
             height: 44,
             borderRadius: 14,
-            backgroundColor: 'rgba(255,255,255,0.16)',
+            backgroundColor: t.colors.primary,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Ionicons name={icon} size={22} color="#FFFFFF" />
+          <Ionicons name={icon} size={22} color={t.colors.onPrimary} />
         </View>
 
-        <Text
-          style={{
-            color: 'rgba(255,255,255,0.86)',
-            fontSize: 11.5,
-            lineHeight: 15,
-            fontWeight: '700',
-            letterSpacing: 0.9,
-            textTransform: 'uppercase',
-            marginRight: 60,
-          }}
-        >
-          {overline}
-        </Text>
+        <Text style={[t.typography.overline, { color: t.colors.onPrimaryContainer, marginRight: 60 }]}>{overline}</Text>
         <Text
           numberOfLines={2}
-          style={{ color: '#FFFFFF', fontSize: 22, lineHeight: 28, fontWeight: '800', marginTop: 6, marginRight: 56 }}
+          style={{
+            color: t.colors.onPrimaryContainer,
+            fontSize: 22,
+            lineHeight: 28,
+            fontWeight: '800',
+            marginTop: 6,
+            marginRight: 56,
+          }}
         >
           {title}
         </Text>
-        <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14.5, lineHeight: 21, marginTop: 6 }}>{body}</Text>
+        <Text style={{ color: t.colors.onPrimaryContainer, fontSize: 14.5, lineHeight: 21, marginTop: 6 }}>{body}</Text>
         <Button
           label={action}
-          variant="inverse"
           size="md"
           iconRight="arrow-forward"
           fullWidth={false}
           onPress={onPress}
           style={{ marginTop: t.spacing.lg }}
         />
-      </LinearGradient>
+      </View>
     </FadeInView>
   );
 }
@@ -151,7 +135,7 @@ function Shortcut({
       style={{ flex: 1, alignItems: 'center', gap: 7, paddingVertical: 4 }}
     >
       <IconTile icon={icon} tone={tone} size={52} />
-      <Text numberOfLines={1} style={{ fontSize: 12.5, lineHeight: 17, fontWeight: '600', color: t.colors.text }}>
+      <Text numberOfLines={1} style={{ fontSize: 12.5, lineHeight: 17, fontWeight: '600', color: t.colors.textPrimary }}>
         {label}
       </Text>
     </PressableScale>
@@ -197,17 +181,31 @@ export function HomeScreen() {
         sessions.list({ when: 'upcoming', page: 1 }),
         requests.pendingCount(),
         gamification.analytics(),
-        // A badge is a nicety; failing to count must not fail the page.
-        notifications.unreadCount().catch(() => ({ count: 0 })),
       ]),
     [],
   );
 
   const state = useAsync(load, []);
 
+  // The bell's dot tracks what is still outstanding: it re-counts on return to Home and
+  // whenever an alert arrives or is dealt with, so it never outlives the last one.
+  const [unreadAlerts, setUnreadAlerts] = useState(0);
+  const refreshAlerts = useCallback(() => {
+    void notifications.unreadCount().then((r) => setUnreadAlerts(r.count)).catch(() => undefined);
+  }, []);
+  useFocusEffect(refreshAlerts);
+  useEffect(() => {
+    const offNew = onEvent(RT.NOTIFICATION, refreshAlerts);
+    const offRead = onEvent(RT.NOTIFICATION_READ, refreshAlerts);
+    return () => {
+      offNew();
+      offRead();
+    };
+  }, [refreshAlerts]);
+
   if (state.loading) return <HomeSkeleton />;
 
-  const [matches, upcoming, pending, analytics, unread] = state.data ?? [];
+  const [matches, upcoming, pending, analytics] = state.data ?? [];
   const firstName = user?.name.split(' ')[0] ?? 'there';
   const hasSkills = (analytics?.skillsTeaching ?? 0) + (analytics?.skillsLearning ?? 0) > 0;
   const pendingCount = pending?.count ?? 0;
@@ -268,9 +266,9 @@ export function HomeScreen() {
           <IconButton
             icon="notifications-outline"
             accessibilityLabel={
-              (unread?.count ?? 0) > 0 ? `Notifications, ${unread?.count} unread` : 'Notifications'
+              unreadAlerts > 0 ? `Notifications, ${unreadAlerts} new` : 'Notifications'
             }
-            badge={(unread?.count ?? 0) > 0}
+            badge={unreadAlerts > 0}
             onPress={() => navigation.navigate('Notifications')}
           />
           <PressableScale
@@ -314,20 +312,20 @@ export function HomeScreen() {
           label="Day streak"
           value={analytics?.streakDays ?? 0}
           icon="flame"
-          tone="warning"
+          tone="reward"
         />
       </Row>
 
       <Row style={{ marginBottom: t.spacing.xl }}>
-        <Shortcut icon="layers" label="My skills" tone="teach" onPress={() => navigation.navigate('MySkills')} />
-        <Shortcut icon="calendar" label="Calendar" tone="accent" onPress={() => navigation.navigate('Calendar')} />
+        <Shortcut icon="layers" label="My skills" tone="primary" onPress={() => navigation.navigate('MySkills')} />
+        <Shortcut icon="calendar" label="Calendar" tone="primary" onPress={() => navigation.navigate('Calendar')} />
         <Shortcut
           icon="trophy"
           label="Rankings"
-          tone="warning"
+          tone="primary"
           onPress={() => navigation.navigate('Leaderboard')}
         />
-        <Shortcut icon="ribbon" label="Badges" tone="learn" onPress={() => navigation.navigate('Badges')} />
+        <Shortcut icon="ribbon" label="Badges" tone="primary" onPress={() => navigation.navigate('Badges')} />
       </Row>
 
       <SectionHeader

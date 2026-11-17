@@ -61,7 +61,7 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
         flexDirection: 'row',
         height: BAR_HEIGHT + insets.bottom,
         paddingBottom: insets.bottom,
-        backgroundColor: t.colors.bgElevated,
+        backgroundColor: t.colors.surface,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: t.colors.border,
       }}
@@ -76,7 +76,7 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
               width: PILL_WIDTH,
               height: PILL_HEIGHT,
               borderRadius: PILL_HEIGHT / 2,
-              backgroundColor: t.colors.primarySoft,
+              backgroundColor: t.colors.secondaryContainer,
             },
             pill,
           ]}
@@ -111,7 +111,7 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
             <TabIcon
               focused={focused}
               name={focused ? (icons?.on ?? 'ellipse') : (icons?.off ?? 'ellipse-outline')}
-              color={focused ? t.colors.primary : t.colors.textMuted}
+              color={focused ? t.colors.onSecondaryContainer : t.colors.textSecondary}
               badge={badge}
             />
             <Text
@@ -121,7 +121,7 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
                 fontSize: 11.5,
                 lineHeight: 15,
                 fontWeight: focused ? '700' : '600',
-                color: focused ? t.colors.primary : t.colors.textMuted,
+                color: focused ? t.colors.textPrimary : t.colors.textSecondary,
               }}
             >
               {label}
@@ -172,14 +172,14 @@ function TabIcon({
             height: 18,
             paddingHorizontal: 5,
             borderRadius: 9,
-            backgroundColor: t.colors.danger,
+            backgroundColor: t.colors.error,
             borderWidth: 2,
-            borderColor: t.colors.bgElevated,
+            borderColor: t.colors.surface,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: t.colors.onDanger, fontSize: 11, lineHeight: 14, fontWeight: '800' }}>
+          <Text style={{ color: t.colors.onError, fontSize: 11, lineHeight: 14, fontWeight: '800' }}>
             {badge > 99 ? '99+' : badge}
           </Text>
         </View>

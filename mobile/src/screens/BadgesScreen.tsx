@@ -53,13 +53,13 @@ export function BadgesScreen() {
                 borderRadius: 23,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: badge.earned ? t.colors.successSoft : t.colors.surfaceAlt,
+                backgroundColor: badge.earned ? t.colors.rewardContainer : t.colors.surfaceContainer,
               }}
             >
               <Ionicons
                 name={BADGE_ICON[badge.badge] ?? 'trophy-outline'}
                 size={22}
-                color={badge.earned ? t.colors.success : t.colors.textMuted}
+                color={badge.earned ? t.colors.onRewardContainer : t.colors.textSecondary}
               />
             </View>
             <View style={{ flex: 1, opacity: badge.earned ? 1 : 0.65 }}>
@@ -68,7 +68,7 @@ export function BadgesScreen() {
                 {badge.earned ? (
                   <Ionicons name="checkmark-circle" size={19} color={t.colors.success} />
                 ) : (
-                  <Ionicons name="lock-closed-outline" size={16} color={t.colors.textMuted} />
+                  <Ionicons name="lock-closed-outline" size={16} color={t.colors.textSecondary} />
                 )}
               </Row>
               <Caption style={{ marginTop: 2 }}>{badge.description}</Caption>

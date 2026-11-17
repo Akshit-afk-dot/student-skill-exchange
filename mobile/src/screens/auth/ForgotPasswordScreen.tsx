@@ -58,18 +58,16 @@ function CodeInput({
                 borderRadius: t.radius.md,
                 borderWidth: 2,
                 borderColor: error
-                  ? t.colors.danger
+                  ? t.colors.error
                   : active
                     ? t.colors.primary
-                    : digit
-                      ? t.colors.borderStrong
-                      : 'transparent',
-                backgroundColor: active ? t.colors.surface : t.colors.surfaceAlt,
+                    : t.colors.outline,
+                backgroundColor: t.colors.surface,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Text style={[t.typography.numeric, { color: t.colors.text }]}>{digit}</Text>
+              <Text style={[t.typography.numeric, { color: t.colors.textPrimary }]}>{digit}</Text>
             </View>
           );
         })}
@@ -143,7 +141,7 @@ export function ForgotPasswordScreen() {
       <View style={{ marginBottom: t.spacing.xl }}>
         <ProgressBar value={step === 'request' ? 0.5 : 1} height={6} />
         <Text
-          style={{ marginTop: 6, fontSize: 12.5, lineHeight: 17, fontWeight: '600', color: t.colors.textMuted }}
+          style={{ marginTop: 6, fontSize: 12.5, lineHeight: 17, fontWeight: '600', color: t.colors.textSecondary }}
         >
           Step {step === 'request' ? 1 : 2} of 2
         </Text>

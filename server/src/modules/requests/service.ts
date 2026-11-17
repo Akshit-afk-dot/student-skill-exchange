@@ -14,7 +14,7 @@ import type { RequestStatus } from '../../types/domain';
 import { ApiError } from '../../utils/errors';
 import { isBlockedBetween } from '../blocks/service';
 import { paginate, type Paginated } from '../../utils/pagination';
-import { notify } from '../notifications/service';
+import { notify, resolveNotifications } from '../notifications/service';
 
 export interface CreateRequestInput {
   receiverId: string;
@@ -194,6 +194,7 @@ export async function acceptRequest(requestId: string, userId: string) {
   request.status = 'ACCEPTED';
   request.respondedAt = new Date();
   await request.save();
+  await resolveNotifications(userId, ['REQUEST_RECEIVED'], { requestId: String(request._id) });
 
   const { connectionId, conversationId } = await ensureConnection(
     request.sender,
@@ -211,7 +212,12 @@ export async function acceptRequest(requestId: string, userId: string) {
     type: 'REQUEST_ACCEPTED',
     title: 'Request accepted',
     body: `${receiver?.name ?? 'Your request'} accepted your request to learn ${skill?.name ?? 'a skill'}`,
-    data: { conversationId: String(conversationId), screen: 'Chat' },
+    data: {
+      conversationId: String(conversationId),
+      partnerId: String(request.receiver),
+      partnerName: receiver?.name ?? '',
+      screen: 'Chat',
+    },
   });
   emitToUser(String(request.sender), RT.REQUEST_UPDATED, {
     requestId: String(request._id),
@@ -231,6 +237,7 @@ export async function rejectRequest(requestId: string, userId: string) {
   request.status = 'REJECTED';
   request.respondedAt = new Date();
   await request.save();
+  await resolveNotifications(userId, ['REQUEST_RECEIVED'], { requestId: String(request._id) });
 
   // Deliberately vague, and not pushed to the device: a rejection does not need to
   // buzz someone's phone, and naming the rejecter invites hard feelings.
@@ -259,6 +266,8 @@ export async function cancelRequest(requestId: string, userId: string) {
   request.status = 'CANCELLED';
   request.respondedAt = new Date();
   await request.save();
+  // Withdrawn, so there is nothing left for the recipient to answer.
+  await resolveNotifications(request.receiver, ['REQUEST_RECEIVED'], { requestId: String(request._id) });
   return request;
 }
 

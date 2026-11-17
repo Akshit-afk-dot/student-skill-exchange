@@ -1,12 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Image,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   TextInput,
   View,
@@ -24,6 +22,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView, useSafeAreaInsets, type Edge } from 'react-native-safe-area-context';
 import { haptics } from '../haptics';
 import { useCountUp } from '../hooks/useCountUp';
@@ -60,9 +59,13 @@ export function Screen({
   ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: t.colors.bg }} edges={edges}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: t.colors.background }} edges={edges}>
       {scroll ? (
-        <ScrollView
+        // Every form in the app lives in a scrolling screen. As the keyboard rises, this
+        // scrolls the focused field (and the hint or error under it) clear of the keyboard,
+        // in step with the keyboard's own animation.
+        <KeyboardAwareScrollView
+          bottomOffset={t.spacing.xxl}
           contentContainerStyle={[inner, { flexGrow: 1 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -83,7 +86,7 @@ export function Screen({
           }
         >
           {children}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       ) : (
         <View style={[{ flex: 1 }, inner]}>{children}</View>
       )}
@@ -105,7 +108,7 @@ export function Display({ children, style, numberOfLines }: TypeProps) {
     <Text
       numberOfLines={numberOfLines}
       accessibilityRole="header"
-      style={[t.typography.display, { color: t.colors.text }, style]}
+      style={[t.typography.display, { color: t.colors.textPrimary }, style]}
     >
       {children}
     </Text>
@@ -118,7 +121,7 @@ export function Title({ children, style, numberOfLines }: TypeProps) {
     <Text
       numberOfLines={numberOfLines}
       accessibilityRole="header"
-      style={[t.typography.title, { color: t.colors.text }, style]}
+      style={[t.typography.title, { color: t.colors.textPrimary }, style]}
     >
       {children}
     </Text>
@@ -128,7 +131,7 @@ export function Title({ children, style, numberOfLines }: TypeProps) {
 export function Heading({ children, style, numberOfLines }: TypeProps) {
   const t = useTheme();
   return (
-    <Text numberOfLines={numberOfLines} style={[t.typography.heading, { color: t.colors.text }, style]}>
+    <Text numberOfLines={numberOfLines} style={[t.typography.heading, { color: t.colors.textPrimary }, style]}>
       {children}
     </Text>
   );
@@ -139,7 +142,7 @@ export function Subheading({ children, style, numberOfLines }: TypeProps) {
   return (
     <Text
       numberOfLines={numberOfLines}
-      style={[t.typography.subheading, { color: t.colors.text }, style]}
+      style={[t.typography.subheading, { color: t.colors.textPrimary }, style]}
     >
       {children}
     </Text>
@@ -159,7 +162,7 @@ export function Body({
       numberOfLines={numberOfLines}
       style={[
         small ? t.typography.bodySmall : t.typography.body,
-        { color: muted ? t.colors.textMuted : t.colors.text },
+        { color: muted ? t.colors.textSecondary : t.colors.textPrimary },
         style,
       ]}
     >
@@ -173,7 +176,7 @@ export function Caption({ children, style, numberOfLines }: TypeProps) {
   return (
     <Text
       numberOfLines={numberOfLines}
-      style={[t.typography.caption, { color: t.colors.textMuted }, style]}
+      style={[t.typography.caption, { color: t.colors.textSecondary }, style]}
     >
       {children}
     </Text>
@@ -183,7 +186,7 @@ export function Caption({ children, style, numberOfLines }: TypeProps) {
 /** Small uppercase label that opens a section. */
 export function Overline({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
   const t = useTheme();
-  return <Text style={[t.typography.overline, { color: t.colors.textMuted }, style]}>{children}</Text>;
+  return <Text style={[t.typography.overline, { color: t.colors.textSecondary }, style]}>{children}</Text>;
 }
 
 /* ---------- Surfaces ---------- */
@@ -246,7 +249,7 @@ export function Field({
     <View style={{ marginBottom: t.spacing.lg }}>
       <Text
         style={{
-          color: t.colors.text,
+          color: t.colors.textPrimary,
           fontSize: 14,
           lineHeight: 19,
           fontWeight: '600',
@@ -261,21 +264,23 @@ export function Field({
           entering={LAYOUT_ANIMATIONS_SUPPORTED ? FadeInDown.duration(t.motion.fast) : undefined}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 }}
         >
-          <Ionicons name="alert-circle" size={14} color={t.colors.danger} />
-          <Text style={{ color: t.colors.danger, fontSize: 13, lineHeight: 17, fontWeight: '500', flex: 1 }}>
+          <Ionicons name="alert-circle" size={14} color={t.colors.error} />
+          <Text style={{ color: t.colors.error, fontSize: 13, lineHeight: 17, fontWeight: '500', flex: 1 }}>
             {error}
           </Text>
         </Animated.View>
       ) : hint ? (
-        <Text style={{ color: t.colors.textMuted, fontSize: 13, lineHeight: 17, marginTop: 6 }}>{hint}</Text>
+        <Text style={{ color: t.colors.textSecondary, fontSize: 13, lineHeight: 17, marginTop: 6 }}>{hint}</Text>
       ) : null}
     </View>
   );
 }
 
 /**
- * Text input. A filled well rather than an outlined box: the border only appears on
- * focus (brand) or error (red), so the one field being edited is the one that stands out.
+ * Text input: an outlined field. The resting border is the `outline` role (3:1 against
+ * any surface), because WCAG 1.4.11 needs whatever identifies an input to be visible to
+ * people with low vision. Focus turns it the brand colour; an error turns it red, and the
+ * Field beneath always says why in words.
  */
 export function Input({
   error,
@@ -299,10 +304,11 @@ export function Input({
         {
           flexDirection: 'row',
           alignItems: props.multiline ? 'flex-start' : 'center',
-          backgroundColor: focused ? t.colors.surface : t.colors.surfaceAlt,
+          backgroundColor: t.colors.surface,
           borderRadius: t.radius.md,
+          // 1.5pt in every state, so focusing a field never nudges the layout.
           borderWidth: 1.5,
-          borderColor: error ? t.colors.danger : focused ? t.colors.primary : 'transparent',
+          borderColor: error ? t.colors.error : focused ? t.colors.primary : t.colors.outline,
         },
         containerStyle,
       ]}
@@ -311,12 +317,12 @@ export function Input({
         <Ionicons
           name={icon}
           size={19}
-          color={focused ? t.colors.primary : t.colors.textMuted}
+          color={focused ? t.colors.primary : t.colors.textSecondary}
           style={{ marginLeft: 14, marginTop: props.multiline ? 15 : 0 }}
         />
       ) : null}
       <TextInput
-        placeholderTextColor={t.colors.textMuted}
+        placeholderTextColor={t.colors.textSecondary}
         selectionColor={t.colors.primary}
         onFocus={(e) => {
           setFocused(true);
@@ -334,7 +340,10 @@ export function Input({
             paddingVertical: 13,
             fontFamily: t.fonts.regular,
             fontSize: 16,
-            color: t.colors.text,
+            color: t.colors.textPrimary,
+            // The field's own border shows focus (in the brand colour, 3:1 or better), so
+            // the browser's extra focus ring is suppressed in the web build.
+            outlineWidth: 0,
           },
           style,
         ]}
@@ -346,21 +355,21 @@ export function Input({
 
 /* ---------- Identity ---------- */
 
-// Deep enough that white initials stay legible on every pair.
-const AVATAR_GRADIENTS: ReadonlyArray<readonly [string, string]> = [
-  ['#6D5BFF', '#4B3AD6'],
-  ['#EA670C', '#C2410C'],
-  ['#0E9494', '#087070'],
-  ['#DB3F78', '#B02460'],
-  ['#3373E0', '#2456C9'],
-  ['#129A52', '#0A773C'],
-];
+/**
+ * Avatars without a photo get one of three tonal fills from the palette, picked from the
+ * name, so the same person always looks the same across screens. Tonal rather than
+ * saturated, so a list of avatars does not turn into a wall of colour.
+ */
+type AvatarTone = 'primary' | 'tertiary' | 'secondary';
+const AVATAR_TONES: readonly AvatarTone[] = ['primary', 'tertiary', 'secondary'];
 
-/** The same name always gets the same colour, so a person is recognisable across screens. */
-function gradientFor(name: string): readonly [string, string] {
+function avatarColours(t: Theme, name: string): { bg: string; fg: string } {
   let sum = 0;
   for (let i = 0; i < name.length; i += 1) sum += name.charCodeAt(i);
-  return AVATAR_GRADIENTS[sum % AVATAR_GRADIENTS.length] ?? ['#6D5BFF', '#4B3AD6'];
+  const tone = AVATAR_TONES[sum % AVATAR_TONES.length] ?? 'primary';
+  if (tone === 'tertiary') return { bg: t.colors.tertiaryContainer, fg: t.colors.onTertiaryContainer };
+  if (tone === 'secondary') return { bg: t.colors.secondaryContainer, fg: t.colors.onSecondaryContainer };
+  return { bg: t.colors.primaryContainer, fg: t.colors.onPrimaryContainer };
 }
 
 export function Avatar({
@@ -386,30 +395,29 @@ export function Avatar({
     .join('');
 
   const inner = ring ? size - 8 : size;
+  const fill = avatarColours(t, name);
 
   const face = uri ? (
     <Image
       source={{ uri }}
-      style={{ width: inner, height: inner, borderRadius: inner / 2, backgroundColor: t.colors.surfaceAlt }}
+      style={{ width: inner, height: inner, borderRadius: inner / 2, backgroundColor: t.colors.surfaceContainer }}
       accessibilityIgnoresInvertColors
     />
   ) : (
-    <LinearGradient
-      colors={gradientFor(name)}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <View
       style={{
         width: inner,
         height: inner,
         borderRadius: inner / 2,
+        backgroundColor: fill.bg,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: inner * 0.38, letterSpacing: 0.3 }}>
+      <Text style={{ color: fill.fg, fontWeight: '700', fontSize: inner * 0.38, letterSpacing: 0.3 }}>
         {initials || '?'}
       </Text>
-    </LinearGradient>
+    </View>
   );
 
   return (
@@ -439,7 +447,7 @@ export function Avatar({
             width: Math.max(12, size * 0.28),
             height: Math.max(12, size * 0.28),
             borderRadius: size * 0.14 + 6,
-            backgroundColor: t.dark ? '#4ADE94' : '#16B364',
+            backgroundColor: t.colors.success,
             borderWidth: 2.5,
             borderColor: t.colors.surface,
           }}
@@ -454,30 +462,40 @@ export function Avatar({
 export type Tone =
   | 'neutral'
   | 'primary'
+  /** Skills someone offers: the brand colour. */
   | 'teach'
+  /** Skills someone wants: the tertiary colour, which means nothing else. */
   | 'learn'
-  | 'accent'
+  | 'secondary'
   | 'success'
   | 'warning'
-  | 'danger';
+  | 'danger'
+  | 'reward';
 
+/**
+ * A tone's soft fill and the colour for text and icons on it. Always the paired
+ * "on-container" role, never the accent itself, so text on a tint keeps its contrast.
+ */
 export function toneColours(t: Theme, tone: Tone): { bg: string; fg: string } {
+  const c = t.colors;
   switch (tone) {
     case 'primary':
     case 'teach':
-      return { bg: t.colors.primarySoft, fg: t.colors.primary };
+      return { bg: c.primaryContainer, fg: c.onPrimaryContainer };
     case 'learn':
-      return { bg: t.colors.learnSoft, fg: t.colors.learn };
-    case 'accent':
-      return { bg: t.colors.accentSoft, fg: t.colors.accent };
+      return { bg: c.tertiaryContainer, fg: c.onTertiaryContainer };
+    case 'secondary':
+      return { bg: c.secondaryContainer, fg: c.onSecondaryContainer };
     case 'success':
-      return { bg: t.colors.successSoft, fg: t.colors.success };
+      return { bg: c.successContainer, fg: c.onSuccessContainer };
     case 'warning':
-      return { bg: t.colors.warningSoft, fg: t.colors.warning };
+      return { bg: c.warningContainer, fg: c.onWarningContainer };
     case 'danger':
-      return { bg: t.colors.dangerSoft, fg: t.colors.danger };
+      return { bg: c.errorContainer, fg: c.onErrorContainer };
+    case 'reward':
+      return { bg: c.rewardContainer, fg: c.onRewardContainer };
     default:
-      return { bg: t.colors.surfaceAlt, fg: t.colors.textMuted };
+      return { bg: c.surfaceContainer, fg: c.textSecondary };
   }
 }
 
@@ -502,8 +520,16 @@ export function Chip({
   selected?: boolean;
 }) {
   const t = useTheme();
-  const c = selected ? { bg: t.colors.primary, fg: t.colors.onPrimary } : toneColours(t, tone);
   const interactive = Boolean(onPress);
+  // A toggle chip (selected is a boolean) follows Material's filter chip: outlined at rest,
+  // a secondary-container fill with a tick when on. Other chips use their tone.
+  const toggle = selected !== undefined;
+  const c = toggle
+    ? selected
+      ? { bg: t.colors.secondaryContainer, fg: t.colors.onSecondaryContainer }
+      : { bg: t.colors.surface, fg: t.colors.textPrimary }
+    : toneColours(t, tone);
+  const glyph = toggle && selected ? 'checkmark' : icon;
 
   const scale = useSharedValue(1);
   useEffect(() => {
@@ -527,13 +553,15 @@ export function Chip({
           borderRadius: t.radius.pill,
           paddingHorizontal: interactive ? 15 : 12,
           minHeight: interactive ? 38 : 30,
-          borderWidth: interactive && !selected ? StyleSheet.hairlineWidth : 0,
+          // Material's filter chip uses the softer outline here: the label already has
+          // 4.5:1 contrast, so the border is not what identifies the chip.
+          borderWidth: toggle && !selected ? 1 : 0,
           borderColor: t.colors.border,
         },
         animatedStyle,
       ]}
     >
-      {icon ? <Ionicons name={icon} size={interactive ? 15 : 13} color={c.fg} /> : null}
+      {glyph ? <Ionicons name={glyph} size={interactive ? 15 : 13} color={c.fg} /> : null}
       <Text
         numberOfLines={1}
         style={{ color: c.fg, fontSize: interactive ? 14 : 13, lineHeight: 18, fontWeight: '600' }}
@@ -597,7 +625,7 @@ export function Segmented<T extends string>({
       accessibilityRole="tablist"
       style={{
         flexDirection: 'row',
-        backgroundColor: t.colors.surfaceAlt,
+        backgroundColor: t.colors.surfaceContainer,
         borderRadius: t.radius.md,
         padding: 4,
       }}
@@ -612,11 +640,8 @@ export function Segmented<T extends string>({
               left: 4,
               width: segment,
               borderRadius: t.radius.md - 4,
-              // Raised above its track in both schemes: white on grey in light mode, and
-              // a lighter tone in dark mode, where shadows do not read.
-              backgroundColor: t.dark ? t.colors.borderStrong : t.colors.surface,
+              backgroundColor: t.colors.secondaryContainer,
             },
-            t.elevation(1),
             thumb,
           ]}
         />
@@ -643,17 +668,18 @@ export function Segmented<T extends string>({
               gap: 6,
             }}
           >
-            {option.icon ? (
+            {/* The selected segment swaps its icon for a tick: a shape change, not only a colour one. */}
+            {active || option.icon ? (
               <Ionicons
-                name={option.icon}
+                name={active ? 'checkmark' : (option.icon ?? 'checkmark')}
                 size={15}
-                color={active ? t.colors.primary : t.colors.textMuted}
+                color={active ? t.colors.onSecondaryContainer : t.colors.textSecondary}
               />
             ) : null}
             <Text
               numberOfLines={1}
               style={{
-                color: active ? t.colors.text : t.colors.textMuted,
+                color: active ? t.colors.onSecondaryContainer : t.colors.textSecondary,
                 fontSize: 14,
                 lineHeight: 19,
                 fontWeight: active ? '700' : '600',
@@ -687,11 +713,11 @@ export function StarRating({
       style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
       accessibilityLabel={`Rated ${value.toFixed(1)} out of 5${count !== undefined ? `, ${count} reviews` : ''}`}
     >
-      <Ionicons name="star" size={size} color={t.colors.star} />
+      <Ionicons name="star" size={size} color={t.colors.reward} />
       {showValue ? (
         <Text
           style={{
-            color: t.colors.text,
+            color: t.colors.textPrimary,
             fontSize: size,
             fontWeight: '700',
             fontVariant: ['tabular-nums'],
@@ -701,7 +727,7 @@ export function StarRating({
         </Text>
       ) : null}
       {count !== undefined ? (
-        <Text style={{ color: t.colors.textMuted, fontSize: size - 1 }}>({count})</Text>
+        <Text style={{ color: t.colors.textSecondary, fontSize: size - 1 }}>({count})</Text>
       ) : null}
     </View>
   );
@@ -779,7 +805,7 @@ function StarButton({
         <Ionicons
           name={filled ? 'star' : 'star-outline'}
           size={size}
-          color={filled ? theme.colors.star : theme.colors.borderStrong}
+          color={filled ? theme.colors.reward : theme.colors.outline}
         />
       </Animated.View>
     </Pressable>
@@ -797,7 +823,7 @@ export function LoadingView({ label }: { label?: string }) {
         alignItems: 'center',
         justifyContent: 'center',
         padding: t.spacing.xl,
-        backgroundColor: t.colors.bg,
+        backgroundColor: t.colors.background,
       }}
       accessibilityRole="progressbar"
       accessibilityLabel={label ?? 'Loading'}
@@ -885,7 +911,8 @@ const BANNER_ICONS: Record<Tone, keyof typeof Ionicons.glyphMap> = {
   primary: 'information-circle',
   teach: 'information-circle',
   learn: 'information-circle',
-  accent: 'information-circle',
+  secondary: 'information-circle',
+  reward: 'star',
   success: 'checkmark-circle',
   warning: 'alert-circle',
   danger: 'close-circle',
@@ -1041,7 +1068,7 @@ export function BottomBar({ children }: { children: ReactNode }) {
         paddingHorizontal: t.spacing.page,
         paddingTop: t.spacing.md,
         paddingBottom: Math.max(insets.bottom, t.spacing.md),
-        backgroundColor: t.colors.bgElevated,
+        backgroundColor: t.colors.surface,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: t.colors.border,
         gap: t.spacing.sm,
@@ -1079,7 +1106,7 @@ export function ProgressBar({
       style={{
         height,
         borderRadius: height / 2,
-        backgroundColor: t.colors.surfaceAlt,
+        backgroundColor: t.colors.surfaceContainer,
         overflow: 'hidden',
       }}
     >
@@ -1160,7 +1187,7 @@ export function ListRow({
         <Text
           numberOfLines={1}
           style={{
-            color: destructive ? t.colors.danger : t.colors.text,
+            color: destructive ? t.colors.error : t.colors.textPrimary,
             fontSize: 16,
             lineHeight: 22,
             fontWeight: '600',
@@ -1175,7 +1202,7 @@ export function ListRow({
         <Ionicons
           name={external ? 'open-outline' : 'chevron-forward'}
           size={18}
-          color={t.colors.textMuted}
+          color={t.colors.textSecondary}
         />
       ) : null}
     </View>
@@ -1246,7 +1273,7 @@ export function StatTile({
         </View>
       ) : null}
 
-      <Text style={[t.typography.numeric, { color: t.colors.text }]}>
+      <Text style={[t.typography.numeric, { color: t.colors.textPrimary }]}>
         {numeric === null ? value : decimals > 0 ? counted.toFixed(1) : counted}
       </Text>
 
@@ -1332,7 +1359,7 @@ export function PasswordInput(props: Omit<TextInputProps, 'secureTextEntry'> & {
           justifyContent: 'center',
         }}
       >
-        <Ionicons name={visible ? 'eye-off-outline' : 'eye-outline'} size={20} color={t.colors.textMuted} />
+        <Ionicons name={visible ? 'eye-off-outline' : 'eye-outline'} size={20} color={t.colors.textSecondary} />
       </Pressable>
     </View>
   );
@@ -1383,7 +1410,7 @@ export function Checkbox({
           borderRadius: 8,
           borderWidth: 2,
           marginTop: 1,
-          borderColor: checked ? t.colors.primary : t.colors.borderStrong,
+          borderColor: checked ? t.colors.primary : t.colors.outline,
           backgroundColor: checked ? t.colors.primary : t.colors.surface,
           alignItems: 'center',
           justifyContent: 'center',
@@ -1414,7 +1441,7 @@ export function TextButton({
 }) {
   const t = useTheme();
   const colour =
-    tone === 'muted' ? t.colors.textMuted : tone === 'danger' ? t.colors.danger : t.colors.primary;
+    tone === 'muted' ? t.colors.textSecondary : tone === 'danger' ? t.colors.error : t.colors.primary;
   return (
     <PressableScale
       onPress={onPress}

@@ -81,13 +81,13 @@ export function ReportUserScreen() {
                 style={{
                   padding: t.spacing.md,
                   borderRadius: t.radius.md,
-                  borderWidth: 1,
+                  borderWidth: active ? 2 : 1,
                   borderColor: active ? t.colors.primary : t.colors.border,
-                  backgroundColor: active ? t.colors.primarySoft : t.colors.surface,
+                  backgroundColor: active ? t.colors.secondaryContainer : t.colors.surface,
                 }}
               >
                 <Row style={{ justifyContent: 'space-between' }}>
-                  <Body style={{ color: active ? t.colors.primary : t.colors.text, flex: 1 }}>
+                  <Body style={{ color: active ? t.colors.onSecondaryContainer : t.colors.textPrimary, flex: 1, fontWeight: active ? '700' : '400' }}>
                     {option.label}
                   </Body>
                   {active ? (

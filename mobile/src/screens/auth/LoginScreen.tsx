@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, View } from 'react-native';
+import { View } from 'react-native';
 import {
   Banner,
   Body,
@@ -41,7 +41,8 @@ export function LoginScreen() {
 
   return (
     <Screen scroll>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Screen keeps the focused field clear of the keyboard. */}
+      <View>
         <AuthHeader title="Welcome back" subtitle="Sign in to pick up where you left off." />
 
         {submit.error ? <Banner tone="danger" text={submit.error} /> : null}
@@ -110,7 +111,7 @@ export function LoginScreen() {
           <Body muted>New here?</Body>
           <TextButton label="Create an account" onPress={() => navigation.navigate('Register')} />
         </Row>
-      </KeyboardAvoidingView>
+      </View>
     </Screen>
   );
 }
