@@ -1,6 +1,8 @@
 """
-Generates the app icon, Android adaptive icon layers, splash mark, favicon and the
-Google Play listing graphics. Run from mobile/:  python assets/source/generate_art.py
+Generates the app icon, Android adaptive icon layers, splash mark, favicon, the Google
+Play listing graphics and the Android notification icons. Run from mobile/:
+    python assets/source/generate_art.py                 everything
+    python assets/source/generate_art.py notifications   notification icons only
 
 The mark is two opposing arrows: the two-way exchange the app is built around. Everything
 is drawn at 4x and scaled down, so edges stay smooth.
@@ -86,7 +88,78 @@ def feature_graphic():
     return Image.alpha_composite(img, mark).convert('RGB')
 
 
+NOTIFICATIONS = ASSETS / 'notifications'
+
+# Android status-bar icons: 24dp square, art inside the middle 20dp, pure white on
+# transparent (the system tints them). Sizes per screen density.
+DENSITIES = {'mdpi': 24, 'hdpi': 36, 'xhdpi': 48, 'xxhdpi': 72, 'xxxhdpi': 96}
+LIVE = 20 / 24
+
+# One symbol per notification category, from the Ionicons set the app itself uses, so the
+# status bar says what kind of thing arrived. Account notices use the app's own mark.
+# The names must match DELIVERY in server/src/modules/notifications/push.ts.
+CATEGORY_GLYPHS = {
+    'notification_messages': 'chatbubble',
+    'notification_requests': 'person-add',
+    'notification_reminders': 'alarm',
+    'notification_sessions': 'calendar-clear',
+    'notification_achievements': 'trophy',
+}
+
+IONICONS = ROOT / 'node_modules' / '@expo' / 'vector-icons' / 'build' / 'vendor' / 'react-native-vector-icons'
+
+
+def white(alpha):
+    """A white image whose shape is the given alpha mask."""
+    img = Image.new('RGBA', alpha.size, WHITE + (0,))
+    img.putalpha(alpha)
+    return img
+
+
+def glyph_icon(code, size):
+    """An Ionicons glyph, scaled to fill the live area of a `size` square."""
+    from PIL import ImageFont
+
+    font = ImageFont.truetype(str(IONICONS / 'Fonts' / 'Ionicons.ttf'), 1024)
+    big = Image.new('L', (1400, 1400), 0)
+    ImageDraw.Draw(big).text((120, 120), chr(code), font=font, fill=255)
+    glyph = big.crop(big.getbbox())
+    live = size * LIVE
+    ratio = live / max(glyph.size)
+    w, h = max(1, round(glyph.width * ratio)), max(1, round(glyph.height * ratio))
+    mask = Image.new('L', (size, size), 0)
+    mask.paste(glyph.resize((w, h), Image.LANCZOS), ((size - w) // 2, (size - h) // 2))
+    return white(mask)
+
+
+def mark_icon(size):
+    """The app's two-arrow mark, white, inside the live area. At scale 1 it is ~600 wide."""
+    img = transparent_mark(size * 4, size * 4 * LIVE / 600, WHITE, WHITE).resize((size, size), Image.LANCZOS)
+    return white(img.getchannel('A'))
+
+
+def notification_icons():
+    import json
+
+    glyphs = json.loads((IONICONS / 'glyphmaps' / 'Ionicons.json').read_text())
+    NOTIFICATIONS.mkdir(exist_ok=True)
+    # The Expo plugin scales this one to every density itself (app.json "icon").
+    mark_icon(96).save(NOTIFICATIONS / 'notification-icon.png', optimize=True)
+    for density, size in DENSITIES.items():
+        folder = NOTIFICATIONS / 'android' / f'drawable-{density}'
+        folder.mkdir(parents=True, exist_ok=True)
+        for name, glyph in CATEGORY_GLYPHS.items():
+            glyph_icon(glyphs[glyph], size).save(folder / f'{name}.png', optimize=True)
+    print('Generated notification icons.')
+
+
 def main():
+    import sys
+
+    if sys.argv[1:] == ['notifications']:
+        notification_icons()
+        return
+
     STORE.mkdir(exist_ok=True)
 
     icon = app_icon()
@@ -104,6 +177,7 @@ def main():
     transparent_mark(1024, 0.8).save(ASSETS / 'splash-icon.png', optimize=True)
 
     feature_graphic().save(STORE / 'feature-graphic-1024x500.png', optimize=True)
+    notification_icons()
     print('Generated icons and store graphics.')
 
 

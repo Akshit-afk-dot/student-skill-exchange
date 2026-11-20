@@ -7,6 +7,7 @@ import {
   USER_ROLES,
   USER_STATUSES,
   type Badge,
+  type OptionalNotificationCategory,
   type TeachingMode,
   type UserRole,
   type UserStatus,
@@ -77,7 +78,10 @@ export interface IUser {
 
   isOnline: boolean;
   lastSeenAt?: Date;
+  /** Expo push tokens, newest last. One per installed app the student is signed in to. */
   pushTokens: string[];
+  /** Push switches per category. Missing means on: only an explicit false turns one off. */
+  notificationPrefs: Partial<Record<OptionalNotificationCategory, boolean>>;
 
   suspendedUntil?: Date;
   moderationNote?: string;
@@ -181,6 +185,13 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     isOnline: { type: Boolean, default: false },
     lastSeenAt: { type: Date },
     pushTokens: { type: [String], default: [], select: false },
+    notificationPrefs: {
+      messages: { type: Boolean },
+      requests: { type: Boolean },
+      reminders: { type: Boolean },
+      sessions: { type: Boolean },
+      achievements: { type: Boolean },
+    },
 
     suspendedUntil: { type: Date },
     moderationNote: { type: String, maxlength: 500 },

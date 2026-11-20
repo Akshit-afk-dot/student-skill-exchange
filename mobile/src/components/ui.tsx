@@ -16,6 +16,7 @@ import {
 import Animated, {
   FadeIn,
   FadeInDown,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -397,9 +398,15 @@ export function Avatar({
   const inner = ring ? size - 8 : size;
   const fill = avatarColours(t, name);
 
-  const face = uri ? (
+  // A photo that will not load (deleted, or lost from the server's disk) falls back to
+  // the initials rather than leaving an empty grey circle. A new photo gets a new try.
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [uri]);
+
+  const face = uri && !failed ? (
     <Image
       source={{ uri }}
+      onError={() => setFailed(true)}
       style={{ width: inner, height: inner, borderRadius: inner / 2, backgroundColor: t.colors.surfaceContainer }}
       accessibilityIgnoresInvertColors
     />
@@ -1422,6 +1429,76 @@ export function Checkbox({
       </Pressable>
       {children ? <View style={{ flex: 1 }}>{children}</View> : null}
     </View>
+  );
+}
+
+/**
+ * An on/off switch, after Material 3's: the thumb grows and shows a tick when on, so the
+ * state reads without colour (WCAG 1.4.1). The thumb travels on a spring; the colours fade
+ * on a timer, because an overshooting colour flickers. Felt with the system toggle haptic.
+ */
+export function Switch({
+  value,
+  onChange,
+  accessibilityLabel,
+  disabled = false,
+}: {
+  value: boolean;
+  onChange(next: boolean): void;
+  accessibilityLabel: string;
+  disabled?: boolean;
+}) {
+  const t = useTheme();
+  const travel = useSharedValue(value ? 1 : 0);
+  const tone = useSharedValue(value ? 1 : 0);
+
+  useEffect(() => {
+    travel.value = withSpring(value ? 1 : 0, t.motion.springs.spatialFast);
+    tone.value = withTiming(value ? 1 : 0, { duration: t.motion.effects.fast });
+  }, [value, travel, tone, t.motion]);
+
+  const off = { track: t.colors.surfaceContainerHigh, border: t.colors.outline, thumb: t.colors.outline };
+  const on = { track: t.colors.primary, border: t.colors.primary, thumb: t.colors.onPrimary };
+
+  const trackStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(tone.value, [0, 1], [off.track, on.track]),
+    borderColor: interpolateColor(tone.value, [0, 1], [off.border, on.border]),
+  }));
+  const thumbStyle = useAnimatedStyle(() => {
+    const size = 16 + travel.value * 8;
+    return {
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: interpolateColor(tone.value, [0, 1], [off.thumb, on.thumb]),
+      // Centre travels from 16 to 36 inside the 52-wide track (2pt border included).
+      transform: [{ translateX: 14 + travel.value * 20 - size / 2 }],
+    };
+  });
+  const tickStyle = useAnimatedStyle(() => ({ opacity: tone.value, transform: [{ scale: 0.5 + tone.value * 0.5 }] }));
+
+  return (
+    <Pressable
+      onPress={() => {
+        if (disabled) return;
+        haptics.toggle(!value);
+        onChange(!value);
+      }}
+      disabled={disabled}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value, disabled }}
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={8}
+      style={{ opacity: disabled ? 0.5 : 1, paddingVertical: 6 }}
+    >
+      <Animated.View style={[{ width: 52, height: 32, borderRadius: 16, borderWidth: 2, justifyContent: 'center' }, trackStyle]}>
+        <Animated.View style={[{ alignItems: 'center', justifyContent: 'center' }, thumbStyle]}>
+          <Animated.View style={tickStyle}>
+            <Ionicons name="checkmark" size={15} color={t.colors.primary} />
+          </Animated.View>
+        </Animated.View>
+      </Animated.View>
+    </Pressable>
   );
 }
 

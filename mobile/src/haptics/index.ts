@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import { prefs } from '../utils/prefs';
 import {
   achievement,
+  arrival,
   cascade,
   connection,
   holdToConfirm,
@@ -12,6 +13,7 @@ import {
   sent,
   simple,
   starRating,
+  type ArrivalKind,
   type HapticPattern,
 } from './patterns';
 import { fire, hapticsSupported, minGapFor, type AndroidEngine } from './primitives';
@@ -166,6 +168,8 @@ export const haptics = {
   messageReceived: () => void play(messageReceived()),
   achievement: () => void play(achievement()),
   starRating: (stars: number) => void play(starRating(stars)),
+  /** A notification banner landing while the app is open. */
+  arrival: (kind: ArrivalKind) => play(arrival(kind)),
 
   // These accompany an animation, so they hand back a canceller.
   scoreReveal: (score: number, durationMs: number, twoWay = false) =>
@@ -190,5 +194,5 @@ export type SimpleHaptic =
   | 'settle'
   | 'sent';
 
-export type { AndroidEngine, HapticPattern };
+export type { AndroidEngine, ArrivalKind, HapticPattern };
 export { hapticsSupported };

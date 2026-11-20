@@ -22,6 +22,7 @@ import type {
   Skill,
   SkillCategory,
   SkillLevel,
+  SkillNameCheck,
   UserSkillEntry,
 } from '../types';
 
@@ -63,7 +64,9 @@ export const auth = {
 
   resendVerification: () => api.post<{ success: boolean }>('/auth/resend-verification'),
 
-  registerPushToken: (token: string) => api.post<{ success: boolean }>('/auth/push-token', { token }),
+  /** Registers this phone for push, with its time zone so notification times read locally. */
+  registerPushToken: (token: string, timezone?: string) =>
+    api.post<{ success: boolean }>('/auth/push-token', { token, ...(timezone ? { timezone } : {}) }),
 
   unregisterPushToken: (token: string) =>
     api.delete<{ success: boolean }>('/auth/push-token', { token }),
@@ -125,6 +128,9 @@ export const skills = {
 
   popular: () => api.get<{ mostTaught: Skill[]; mostWanted: Skill[] }>('/skills/popular'),
 
+  /** What adding this name as a new skill would do, asked as the student types. */
+  check: (name: string) => api.get<SkillNameCheck>(`/skills/check${qs({ name })}`),
+
   mine: () => api.get<{ teaches: UserSkillEntry[]; learns: UserSkillEntry[] }>('/user-skills'),
 
   add: (body: {
@@ -136,6 +142,8 @@ export const skills = {
     yearsOfExperience?: number;
     description?: string;
     priority?: number;
+    /** Keep the typed name after being offered a similar catalogue skill. */
+    allowSimilar?: boolean;
   }) => api.post<UserSkillEntry>('/user-skills', body),
 
   update: (id: string, body: Record<string, unknown>) =>

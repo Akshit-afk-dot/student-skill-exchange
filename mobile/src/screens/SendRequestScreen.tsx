@@ -18,6 +18,7 @@ import {
   Title,
 } from '../components/ui';
 import { useAction, useAsync } from '../hooks/useAsync';
+import { askForNotifications } from '../notifications/PermissionPrompt';
 import { useTheme } from '../theme';
 import { offerEmailVerification } from '../utils/verification';
 import type { RootStackParamList } from '../navigation/types';
@@ -85,6 +86,12 @@ export function SendRequestScreen() {
     // A request has left your hands: a click as it goes, a confirmation as it lands.
     haptics.sent();
     navigation.navigate('LearningRequests');
+    // Their answer is worth hearing about, which makes this the moment to offer notifications.
+    void askForNotifications({
+      reason: 'request',
+      name: userName,
+      skill: theirTeaches.find((s) => s.skill.id === wantSkillId)?.skill.name,
+    });
     return true;
   });
 

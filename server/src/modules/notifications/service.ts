@@ -1,6 +1,6 @@
 import type { Types } from 'mongoose';
 import { logger } from '../../config/logger';
-import { Notification } from '../../models';
+import { Notification, User } from '../../models';
 import { RT, emitToUser } from '../../realtime/bus';
 import type { NotificationType } from '../../types/domain';
 import { sendPush } from './push';
@@ -10,37 +10,84 @@ export interface NotifyInput {
   type: NotificationType;
   title: string;
   body: string;
-  data?: Record<string, string>;
+  /**
+   * Strings only. `screen` and an id say where opening it lands; `actorId`, `actorName`
+   * and `actorImage` say who caused it, so the app can show their face.
+   */
+  data?: Record<string, string | undefined>;
   /** Set false for low-value events that should not buzz a phone. */
   push?: boolean;
+  /** Android: a newer notification with the same tag replaces the one showing. */
+  tag?: string;
+  /** Stacks related notifications together in the tray. */
+  threadId?: string;
+  /** Replaces on both platforms: for updates where only the latest matters. */
+  collapseId?: string;
+  /** An undelivered push is dropped after this (a reminder for a session that started). */
+  expiresAt?: Date;
+}
+
+/** Pushes still in flight. Only tests wait on these; requests never do. */
+const inFlight = new Set<Promise<void>>();
+
+/** Resolves once every push started so far has finished. For tests. */
+export async function pushesSettled(): Promise<void> {
+  while (inFlight.size > 0) await Promise.allSettled([...inFlight]);
+}
+
+/** The time zone a student's notification times are written in. */
+export async function timeZoneOf(userId: string | Types.ObjectId): Promise<string> {
+  const user = await User.findById(userId).select('timezone').lean();
+  return user?.timezone || 'Asia/Kolkata';
+}
+
+/** Who caused a notification, as data the app can draw: a name, and a photo if they have one. */
+export function actorData(actor: { _id: unknown; name?: string; profileImage?: string } | null | undefined) {
+  if (!actor) return {};
+  return {
+    actorId: String(actor._id),
+    actorName: actor.name ?? '',
+    ...(actor.profileImage ? { actorImage: actor.profileImage } : {}),
+  };
 }
 
 /**
  * Fan-out for a single user-facing event across all three channels:
- * persisted (notification centre), realtime (socket, if connected), push (FCM).
+ * persisted (notification centre), realtime (socket, if connected), push (Expo).
  *
  * Delivery is best-effort by design: a notification failure must never roll back the
- * action that produced it, so this never throws.
+ * action that produced it, so this never throws. Push is not awaited either: a slow
+ * push service must not make sending a chat message slow.
  */
 export async function notify(input: NotifyInput): Promise<void> {
   const userId = String(input.user);
   try {
+    const data = Object.fromEntries(
+      Object.entries(input.data ?? {}).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+    );
     const doc = await Notification.create({
       user: input.user,
       type: input.type,
       title: input.title,
       body: input.body,
-      data: input.data ?? {},
+      data,
     });
 
     emitToUser(userId, RT.NOTIFICATION, doc.toJSON());
 
     if (input.push !== false) {
-      await sendPush(userId, {
+      const job = sendPush(userId, {
+        notificationId: String(doc._id),
+        type: input.type,
         title: input.title,
         body: input.body,
-        data: { type: input.type, ...(input.data ?? {}) },
-      });
+        data,
+        tag: input.tag,
+        threadId: input.threadId,
+        collapseId: input.collapseId,
+        expiresAt: input.expiresAt,
+      }).finally(() => inFlight.delete(job));
+      inFlight.add(job);
     }
   } catch (err) {
     logger.error({ err, userId, type: input.type }, 'Failed to deliver notification');

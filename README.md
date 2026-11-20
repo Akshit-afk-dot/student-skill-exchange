@@ -147,7 +147,7 @@ git push -u origin feature/video-calls
 | Document | Contents |
 |---|---|
 | [`docs/MATCHING.md`](docs/MATCHING.md) | The algorithm, weight by weight, with worked examples |
-| [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | Step-by-step credential setup for MongoDB, Cloudinary, Firebase, Google and SMTP |
+| [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | Step-by-step credential setup for MongoDB, Cloudinary, push notifications, Google and SMTP |
 | [`docs/API.md`](docs/API.md) | Every endpoint, with request and response shapes |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Data model, module layout, realtime design |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Environment variables and going to production |
@@ -163,8 +163,8 @@ scheduling with clash detection, mutual completion, ratings and reviews, gamific
 with live analytics.
 
 Four integrations are optional and each degrades gracefully, so the app runs end to end
-with nothing but a MongoDB connection string: Cloudinary (else local disk), Firebase push
-(else in-app and realtime notifications only), Google sign-in (else the button is hidden),
+with nothing but a MongoDB connection string: Cloudinary (else local disk), push
+notifications (else in-app and realtime only), Google sign-in (else the button is hidden),
 and SMTP (else emails are written to the server log).
 [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) walks through obtaining each credential.
 

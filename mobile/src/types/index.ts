@@ -55,6 +55,8 @@ export interface SelfUser extends PublicUser {
     minutesLearned: number;
     longestStreak: number;
   };
+  /** Push switches by category; missing (an older server) means all on. */
+  notificationPrefs?: Record<'messages' | 'requests' | 'reminders' | 'sessions' | 'achievements', boolean>;
 }
 
 export interface AuthTokens {
@@ -83,9 +85,23 @@ export interface SkillCategory {
   icon?: string;
 }
 
+/**
+ * The server's verdict on a name a student wants to add as a new skill
+ * (GET /skills/check). See `checkSkillName` in the server's skills service.
+ */
+export type SkillNameCheck =
+  /** Already a catalogue skill, by name or alias ("JS" is JavaScript). */
+  | { status: 'EXISTING'; skill: Skill }
+  /** Probably a catalogue skill: a typo of one, or a narrower wording ("Advanced Excel"). */
+  | { status: 'SUGGESTION'; name: string; kind: 'TYPO' | 'BROADER'; suggestion: Skill }
+  /** Can be added, as `name`. `students` have already added it while it waits for review. */
+  | { status: 'NEW'; name: string; students: number }
+  | { status: 'INVALID'; problem: string; message: string };
+
 export interface UserSkillEntry {
   _id: string;
-  skill: { _id: string; name: string; slug?: string };
+  /** `approved` is false while a skill the student added waits for review. */
+  skill: { _id: string; name: string; slug?: string; approved?: boolean };
   type: UserSkillType;
   level: SkillLevel;
   yearsOfExperience?: number;

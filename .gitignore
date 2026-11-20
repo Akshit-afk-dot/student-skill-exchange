@@ -15,6 +15,9 @@ web-build/
 !.env.example
 *.pem
 *-service-account.json
+# The Firebase private key uploaded to Expo for push. (google-services.json is not a
+# secret and is meant to be committed.)
+*firebase-adminsdk*.json
 
 # Local uploads (development storage driver)
 server/uploads/

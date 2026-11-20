@@ -18,6 +18,7 @@ import {
   Title,
 } from '../components/ui';
 import { useAction, useAsync } from '../hooks/useAsync';
+import { askForNotifications } from '../notifications/PermissionPrompt';
 import { useTheme } from '../theme';
 import type { SessionMode } from '../types';
 import type { RootStackParamList } from '../navigation/types';
@@ -95,6 +96,12 @@ export function ScheduleSessionScreen() {
     });
     haptics.sent();
     navigation.replace('SessionDetails', { sessionId: session._id });
+    // A booked session is what reminders are for.
+    void askForNotifications({
+      reason: 'session',
+      name: partnerName,
+      skill: skillOptions.find((s) => s.id === selectedSkill)?.name,
+    });
     return session;
   });
 

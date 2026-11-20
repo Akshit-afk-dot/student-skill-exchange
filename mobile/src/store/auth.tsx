@@ -17,6 +17,7 @@ import {
 } from '../api/client';
 import { auth as authApi } from '../api/endpoints';
 import { connectSocket, disconnectSocket } from '../api/socket';
+import { unregisterForPush } from '../notifications/device';
 import type { SelfUser } from '../types';
 
 interface AuthState {
@@ -121,6 +122,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
+    // First, while this session can still prove who it is: this phone stops receiving
+    // the student's notifications, so the next person to use it never sees them.
+    await unregisterForPush().catch(() => undefined);
     const refresh = getRefreshToken();
     if (refresh) {
       // Best effort — the local session is cleared whether or not the server hears us.

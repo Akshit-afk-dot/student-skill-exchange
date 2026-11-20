@@ -9,6 +9,7 @@ import { SkeletonList } from '../components/motion';
 import { Banner, Button, Caption, EmptyState, Row, Screen, Segmented } from '../components/ui';
 import { haptics } from '../haptics';
 import { useAction, useAsync } from '../hooks/useAsync';
+import { askForNotifications } from '../notifications/PermissionPrompt';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
 import type { LearningRequest } from '../types';
@@ -167,7 +168,10 @@ export function LearningRequestsScreen() {
             profileImage: celebration.request.sender.profileImage,
           }}
           skill={celebration.request.skill.name}
-          onClose={() => setCelebration(null)}
+          onClose={() => {
+            setCelebration(null);
+            offerNotifications(celebration.request);
+          }}
           onMessage={() => {
             const { request, conversationId } = celebration;
             setCelebration(null);
@@ -176,9 +180,15 @@ export function LearningRequestsScreen() {
               partnerName: request.sender.name,
               partnerId: request.sender._id,
             });
+            offerNotifications(request);
           }}
         />
       ) : null}
     </Screen>
   );
+}
+
+/** Once the celebration is over: a new connection's messages are worth being told about. */
+function offerNotifications(request: LearningRequest): void {
+  void askForNotifications({ reason: 'connection', name: request.sender.name, skill: request.skill.name });
 }

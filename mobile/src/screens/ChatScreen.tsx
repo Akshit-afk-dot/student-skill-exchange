@@ -24,6 +24,7 @@ import { RT, emitTyping, joinConversation, leaveConversation, onEvent } from '..
 import { LAYOUT_ANIMATIONS_SUPPORTED, PressableScale } from '../components/motion';
 import { Avatar, Banner, Body, Caption, Chip, IconButton, LoadingView, Row, Screen, Text } from '../components/ui';
 import { haptics } from '../haptics';
+import { dismissFromTray } from '../notifications/device';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
 import { offerEmailVerification } from '../utils/verification';
@@ -248,6 +249,12 @@ export function ChatScreen() {
   useEffect(() => {
     void loadInitial();
   }, [loadInitial]);
+
+  // This chat's messages are on screen now, so their notifications in the phone's tray
+  // are stale: clear them, as messaging apps do.
+  useEffect(() => {
+    void dismissFromTray((data) => data.conversationId === conversationId);
+  }, [conversationId]);
 
   // Live updates while the screen is open.
   useEffect(() => {

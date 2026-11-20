@@ -1,10 +1,11 @@
 import { Types } from 'mongoose';
-import { Review, Session, User, type ReviewDoc } from '../../models';
+import { Review, Session, Skill, User, type ReviewDoc } from '../../models';
 import { POINTS } from '../../types/domain';
 import { ApiError } from '../../utils/errors';
 import { paginate, type Paginated } from '../../utils/pagination';
 import { awardPoints, evaluateBadges } from '../gamification/service';
-import { notify, resolveNotifications } from '../notifications/service';
+import { clip } from '../notifications/format';
+import { actorData, notify, resolveNotifications } from '../notifications/service';
 import { recalculateRating } from '../users/service';
 
 /** Window during which an author may still edit or withdraw their review. */
@@ -67,13 +68,25 @@ export async function createReview(
   if (input.rating === 5) await awardPoints(revieweeId, POINTS.FIVE_STAR_RECEIVED);
   await evaluateBadges(revieweeId);
 
-  const reviewer = await User.findById(reviewerId).select('name').lean();
+  const [reviewer, skill] = await Promise.all([
+    User.findById(reviewerId).select('name profileImage').lean(),
+    Skill.findById(session.skill).select('name').lean(),
+  ]);
+  const starsText = `${input.rating} star${input.rating === 1 ? '' : 's'}`;
   await notify({
     user: revieweeId,
     type: 'REVIEW_RECEIVED',
-    title: `${input.rating}-star review received`,
-    body: `${reviewer?.name ?? 'A student'} rated your session${input.comment ? `: "${input.comment.slice(0, 80)}"` : ''}`,
-    data: { reviewId: String(review._id), screen: 'Reviews' },
+    title: reviewer?.name ?? 'New review',
+    // Words rather than star symbols, which screen readers read out as "black star".
+    body:
+      `Gave your ${skill?.name ? `${skill.name} ` : ''}session ${starsText}.` +
+      (input.comment?.trim() ? ` “${clip(input.comment, 100)}”` : ''),
+    data: {
+      reviewId: String(review._id),
+      rating: String(input.rating),
+      screen: 'Reviews',
+      ...actorData(reviewer),
+    },
   });
 
   return review;

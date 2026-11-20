@@ -37,9 +37,6 @@ export default tseslint.config(
       ],
       // `{}` appears in Mongoose's generic signatures, where it is the intended meaning.
       '@typescript-eslint/no-empty-object-type': 'off',
-      // The FCM SDK is loaded with require() on purpose, so it is never pulled in
-      // when push notifications are disabled.
-      '@typescript-eslint/no-require-imports': 'off',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'smart'],
       'prefer-const': 'error',

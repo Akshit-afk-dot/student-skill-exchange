@@ -225,6 +225,7 @@ always plays. All patterns stop when the app goes to the background.
 | `achievement` | A rising run ending in confirm | Account created, review submitted, session completed together |
 | `scoreReveal(score)` | Ticks that slow down with the ring's easing, then a landing | The match ring on a student's profile |
 | `connection()` | Three quickening taps, a thud, a confirm | Accepting a request |
+| `arrival(kind)` | Its main beat lands with the banner, 160 ms in | A notification banner arriving (see Notifications) |
 
 ### Choreography
 
@@ -239,6 +240,85 @@ The two hero patterns are timed to their animations, beat for beat.
   drawn together on an accelerating curve; a thud at 420 ms, the instant they touch and the
   burst goes off; the confirmation at 640 ms as the title lands.
 
+## Notifications
+
+Sources: Apple HIG "Notifications" and "Managing notifications", Android's "Notifications"
+design guide, Nielsen Norman Group's "Five Mistakes in Designing Mobile Push
+Notifications". The code is in `mobile/src/notifications/` and
+`server/src/modules/notifications/`.
+
+### Words
+
+Every notification is written on the server, so these rules live there.
+
+- **Who, then what.** When a person caused it, their name is the title and the body says
+  what they did: "Priya Nair" / "Wants to learn Figma from you." Events lead with the event:
+  "JavaScript session booked" / "Priya Nair booked Sat 21 Nov, 5:00 pm · At Library".
+- Titles stay under about 30 characters (Android truncates them to one line). The body
+  never repeats the title. Sentence case, no app name, and no instructions ("Confirm it
+  to…"): say what happened, and let tapping take them there.
+- **Times are in the reader's time zone**, written absolutely ("Sat 21 Nov, 5:00 pm"),
+  because the same text stays in the notification centre, where "tomorrow" would go stale.
+  The phone reports its zone when it registers for push.
+- People's own words are quoted, clipped at a word: a request's message, a review's comment,
+  a cancellation reason.
+- Ratings are written as words ("5 stars"), not ★ symbols, which screen readers read out
+  as "black star".
+- A declined request is never pushed and never bannered. It waits quietly in the centre.
+
+### On the phone (push)
+
+Six categories, each an Android channel with its own name in the phone's settings:
+
+| Category | Importance | Vibration (echoes the in-app haptic) | iOS level |
+|---|---|---|---|
+| Messages | High (pops up) | Two light knocks | Active |
+| Requests | High | Knock, knock, a firmer beat | Active |
+| Session reminders | High | Three even beats | Time-sensitive |
+| Session changes | Default (sound only) | One pulse | Active |
+| Reviews and badges | Low (silent) | None | Passive |
+| Account and safety | Default | Two pulses | Active |
+
+- The status-bar icon is a white symbol for the category (chat bubble, person-add, alarm,
+  calendar, trophy) from the app's own Ionicons, with the app's mark for account notices,
+  tinted the brand indigo. Drawn by `assets/source/generate_art.py notifications`.
+- **No floods.** A chat keeps one notification on Android (each new message replaces it)
+  and one stack on iOS. Updates to a session replace each other. A reminder expires when its
+  session starts.
+- **No stale ones.** Opening a chat clears its notifications from the tray; "Clear all" in
+  the centre clears the tray and the badge. The app icon's badge is the unread count.
+- A channel's vibration cannot change once a phone has created it. Changing one means a
+  new channel id.
+
+### In the app (the banner)
+
+While the app is open the system banner is switched off and the app draws its own: a card
+that drops in from the top on the `spatial` spring, with the person's face (or the event's
+tinted icon) and a small badge for the kind of event, the title and two lines of body.
+
+- Tap opens what it is about. Swipe up dismisses; pulling down gives a little and springs
+  back. It leaves by itself after 4.5 s (5.5 s for long text, 10 s with a screen reader).
+- A newer notification replaces it in place with a small nod, never a stack.
+- **Never for what is already on screen** (Apple's Mail example): no message banner inside
+  that chat or on the chat list, no request banner on Requests, nothing on the notification
+  centre itself.
+- The categories switched off in Settings stay quiet here too.
+- Reduce Motion: it fades instead of travelling. It is announced to screen readers.
+
+### Asking permission
+
+Never at launch. The app asks after a moment whose follow-up is worth hearing about:
+sending a request, connecting (after the celebration), booking a session. A sheet shows two
+notifications exactly as they would arrive, with the real person's name and skill, says
+what will come ("Never ads"), then hands over to the system prompt. "Not now" is respected:
+at most three asks, a week apart, and none once the system prompt is refused for good.
+
+### Settings → Notifications
+
+Whether this phone gets them (with "Turn on" or "Open settings" when it does not), then a
+switch per category. Account notices always arrive. The switches are stored on the server,
+so they follow the student to every phone.
+
 ## Components
 
 All in `mobile/src/components/`. Screens should be built from these, not from raw React Native
@@ -249,7 +329,8 @@ views with inline colours.
 - **Actions**: `Button` (primary, success, danger, secondary, tonal, ghost; lg / md /
   sm), `IconButton`, `TextButton`, `PressableScale`.
 - **Input**: `Field`, `Input` (filled well, border on focus or error), `PasswordInput`,
-  `Checkbox`, `Chip`, `Segmented`, `StarPicker`.
+  `Checkbox`, `Switch` (Material 3: the thumb grows and shows a tick when on), `Chip`,
+  `Segmented`, `StarPicker`.
 - **Content**: `Card`, `ListRow`, `IconTile`, `Avatar` (colour is stable per name),
   `StatTile` (counts up), `ProgressBar`, `ScoreRing`, `ScoreBar`, `Banner`, `EmptyState`,
   `ErrorView`, skeletons.

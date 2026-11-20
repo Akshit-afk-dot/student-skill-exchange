@@ -5,8 +5,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, View } from 'react-native';
 import { chat, requests } from '../api/endpoints';
 import { RT, onEvent } from '../api/socket';
+import { NotificationLayer } from '../notifications/NotificationLayer';
+import { openPendingNotification } from '../notifications/open';
 import { useAuth } from '../store/auth';
 import { palettes, useTheme } from '../theme';
+import { navigationRef, trackCurrentRoute } from './ref';
 import { TabBar } from './TabBar';
 
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
@@ -271,8 +274,25 @@ export function Navigation() {
       };
 
   return (
-    <NavigationContainer theme={navTheme}>
-      {user ? <RootNavigator /> : <AuthNavigator />}
+    <NavigationContainer
+      ref={navigationRef}
+      theme={navTheme}
+      onReady={() => {
+        trackCurrentRoute();
+        // A push tapped while the app was closed: go where it points now the screens exist.
+        if (user) openPendingNotification({ id: user.id, name: user.name });
+      }}
+      onStateChange={trackCurrentRoute}
+    >
+      {user ? (
+        <>
+          <RootNavigator />
+          {/* Above every screen: the in-app banner and the permission prompt. */}
+          <NotificationLayer />
+        </>
+      ) : (
+        <AuthNavigator />
+      )}
     </NavigationContainer>
   );
 }

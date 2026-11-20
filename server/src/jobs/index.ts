@@ -1,7 +1,9 @@
 import cron, { type ScheduledTask } from 'node-cron';
 import { logger } from '../config/logger';
 import { LearningRequest, Session, User } from '../models';
-import { notify } from '../modules/notifications/service';
+import { formatTime, sessionPlace, startsIn } from '../modules/notifications/format';
+import { checkPushReceipts } from '../modules/notifications/push';
+import { actorData, notify } from '../modules/notifications/service';
 
 const tasks: ScheduledTask[] = [];
 
@@ -15,12 +17,15 @@ async function sendSessionReminders(): Promise<void> {
   const now = new Date();
   const inOneHour = new Date(now.getTime() + 60 * 60_000);
 
+  type Person = { _id: unknown; name: string; profileImage?: string; timezone?: string };
   const due = await Session.find({
     status: { $in: ['SCHEDULED', 'CONFIRMED'] },
     scheduledAt: { $gt: now, $lte: inOneHour },
     reminderSentAt: { $exists: false },
   })
     .populate<{ skill: { name: string } }>('skill', 'name')
+    .populate<{ teacher: Person }>('teacher', 'name profileImage timezone')
+    .populate<{ learner: Person }>('learner', 'name profileImage timezone')
     .limit(200);
 
   for (const session of due) {
@@ -31,16 +36,28 @@ async function sendSessionReminders(): Promise<void> {
     );
     if (!claimed) continue;
 
-    const minutes = Math.round((session.scheduledAt.getTime() - Date.now()) / 60_000);
-    const body = `Your ${session.skill?.name ?? 'learning'} session starts in ${minutes} minutes.`;
+    const minutes = (session.scheduledAt.getTime() - Date.now()) / 60_000;
+    const skill = session.skill?.name ?? 'Your session';
+    const pairs: Array<[Person, Person]> = [
+      [session.teacher, session.learner],
+      [session.learner, session.teacher],
+    ];
 
-    for (const participant of [session.teacher, session.learner]) {
+    for (const [participant, partner] of pairs) {
+      if (!participant?._id) continue;
       await notify({
-        user: participant,
+        user: String(participant._id),
         type: 'SESSION_REMINDER',
-        title: 'Session starting soon',
-        body,
-        data: { sessionId: String(session._id), screen: 'SessionDetails' },
+        // What and when is the headline; who and where is the detail.
+        title: `${skill} starts ${startsIn(minutes)}`,
+        body:
+          `With ${partner?.name ?? 'your partner'} at ` +
+          `${formatTime(session.scheduledAt, participant.timezone || 'Asia/Kolkata')} · ` +
+          sessionPlace(session.mode, session.location),
+        data: { sessionId: String(session._id), screen: 'SessionDetails', ...actorData(partner) },
+        collapseId: `session:${String(session._id)}`,
+        // Once it has started, a reminder that arrives late is only noise.
+        expiresAt: session.scheduledAt,
       });
     }
   }
@@ -105,6 +122,8 @@ export function startJobs(): void {
   tasks.push(cron.schedule('0 * * * *', safely('close-stale-sessions', closeStaleSessions)));
   tasks.push(cron.schedule('0 3 * * *', safely('expire-requests', expireOldRequests)));
   tasks.push(cron.schedule('*/30 * * * *', safely('lift-suspensions', liftExpiredSuspensions)));
+  // Expo has receipts ready about 15 minutes after a push; they say which phones to stop pushing to.
+  tasks.push(cron.schedule('*/15 * * * *', safely('push-receipts', () => checkPushReceipts())));
 
   logger.info({ jobs: tasks.length }, 'Background jobs scheduled');
 }

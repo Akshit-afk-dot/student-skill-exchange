@@ -2,10 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Constants from 'expo-constants';
-import { useState } from 'react';
-import { Alert, Platform, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Platform, Pressable, View } from 'react-native';
 import { BASE_URL } from '../api/client';
-import { auth as authApi } from '../api/endpoints';
+import { auth as authApi, users as usersApi } from '../api/endpoints';
 import { FadeInView } from '../components/motion';
 import {
   Avatar,
@@ -23,7 +23,9 @@ import {
   Row,
   Screen,
   Segmented,
+  Switch,
   Text,
+  TextButton,
 } from '../components/ui';
 import {
   haptics,
@@ -35,6 +37,15 @@ import {
   type HapticLevel,
 } from '../haptics';
 import { useAction } from '../hooks/useAsync';
+import {
+  openPhoneSettings,
+  refreshPermission,
+  registerForPush,
+  requestPushPermission,
+  usePushState,
+  type PushPermission,
+} from '../notifications/device';
+import { OPTIONAL_CATEGORIES, type OptionalCategory } from '../notifications/kinds';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../theme';
 import { LEGAL_URLS, contactSupport, openPage } from '../utils/legal';
@@ -68,6 +79,147 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
     <View style={{ marginBottom: t.spacing.xl }}>
       <Overline style={{ marginBottom: t.spacing.sm, marginLeft: 4 }}>{title}</Overline>
       <Card style={{ padding: 0, overflow: 'hidden' }}>{children}</Card>
+    </View>
+  );
+}
+
+const PERMISSION_NOTE: Record<PushPermission, string> = {
+  granted: 'On for this phone',
+  undetermined: 'Off. Turn on to hear about replies and sessions.',
+  denied: 'Off for this phone',
+  blocked: 'Turned off in your phone’s settings',
+  unsupported: 'Pushes go to the phone app. These choices apply there.',
+};
+
+/**
+ * Notifications: whether this phone gets them, and which kinds. Both Apple and Nielsen
+ * Norman Group say people must be able to change this inside the app, not only in the
+ * phone's settings, and one switch per kind beats all-or-nothing.
+ */
+function NotificationsCard() {
+  const t = useTheme();
+  const { user, setUser } = useAuth();
+  const { permission, registrationError } = usePushState();
+  const [error, setError] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
+
+  // The student may have changed it in the phone's settings since the app last looked.
+  useEffect(() => {
+    void refreshPermission();
+  }, []);
+
+  const prefs = user?.notificationPrefs;
+  const on = (id: OptionalCategory) => prefs?.[id] !== false;
+
+  async function toggle(id: OptionalCategory, next: boolean) {
+    if (!user) return;
+    const before = user;
+    const all = Object.fromEntries(OPTIONAL_CATEGORIES.map((c) => [c.id, on(c.id)])) as Record<OptionalCategory, boolean>;
+    // Moves at once; the server catches up.
+    setUser({ ...user, notificationPrefs: { ...all, [id]: next } });
+    setError(null);
+    try {
+      const res = await usersApi.updateProfile({ notificationPrefs: { [id]: next } });
+      setUser(res.user);
+    } catch (err) {
+      setUser(before);
+      setError(err instanceof Error ? err.message : 'Could not save that. Try again.');
+      haptics.error();
+    }
+  }
+
+  async function turnOn() {
+    setAsking(true);
+    const result = await requestPushPermission();
+    setAsking(false);
+    if (result === 'granted') haptics.success();
+  }
+
+  const showSwitches = permission === 'granted' || permission === 'unsupported';
+
+  return (
+    <View style={{ marginBottom: t.spacing.xl }}>
+      <Overline style={{ marginBottom: t.spacing.sm, marginLeft: 4 }}>Notifications</Overline>
+      <Card style={{ padding: 0, overflow: 'hidden' }}>
+        <Row gap={t.spacing.md} style={{ padding: t.spacing.lg }}>
+          <IconTile icon={permission === 'granted' ? 'notifications' : 'notifications-off'} tone="primary" size={38} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 16, lineHeight: 22, fontWeight: '600', color: t.colors.textPrimary }}>
+              Push notifications
+            </Text>
+            <Caption>{PERMISSION_NOTE[permission]}</Caption>
+          </View>
+          {permission === 'undetermined' || permission === 'denied' ? (
+            <Button
+              label="Turn on"
+              variant="tonal"
+              size="sm"
+              fullWidth={false}
+              loading={asking}
+              onPress={() => void turnOn()}
+            />
+          ) : permission === 'blocked' ? (
+            <Button label="Open settings" variant="tonal" size="sm" fullWidth={false} onPress={openPhoneSettings} />
+          ) : null}
+        </Row>
+
+        {permission === 'granted' && registrationError ? (
+          <View style={{ paddingHorizontal: t.spacing.lg, paddingBottom: t.spacing.md }}>
+            <Banner tone="warning" text="This phone couldn’t be set up for notifications yet." />
+            <TextButton label="Try again" onPress={() => void registerForPush()} />
+          </View>
+        ) : null}
+
+        {showSwitches ? (
+          <FadeInView>
+            {OPTIONAL_CATEGORIES.map((category) => (
+              <View key={category.id}>
+                <Divider spacing={0} />
+                <Pressable
+                  onPress={() => {
+                    haptics.toggle(!on(category.id));
+                    void toggle(category.id, !on(category.id));
+                  }}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: on(category.id) }}
+                  accessibilityLabel={`${category.label}. ${category.description}`}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: t.spacing.md,
+                    paddingHorizontal: t.spacing.lg,
+                    paddingVertical: t.spacing.md,
+                    minHeight: 64,
+                  }}
+                >
+                  <IconTile icon={category.icon} tone="primary" size={34} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, lineHeight: 20, fontWeight: '600', color: t.colors.textPrimary }}>
+                      {category.label}
+                    </Text>
+                    <Caption numberOfLines={2}>{category.description}</Caption>
+                  </View>
+                  {/* The whole row is the control (a bigger target); the switch shows its state. */}
+                  <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                    <Switch value={on(category.id)} onChange={() => undefined} accessibilityLabel={category.label} />
+                  </View>
+                </Pressable>
+              </View>
+            ))}
+            <Divider spacing={0} />
+            <View style={{ padding: t.spacing.lg, gap: t.spacing.xs }}>
+              {error ? <Banner tone="danger" text={error} /> : null}
+              <Caption style={{ fontSize: 13, lineHeight: 18 }}>
+                Account and safety notices always arrive.
+                {Platform.OS === 'android' ? ' Sound and vibration for each kind can be changed in your phone’s settings.' : ''}
+              </Caption>
+              {Platform.OS === 'android' ? (
+                <TextButton label="Phone notification settings" size={14} onPress={openPhoneSettings} />
+              ) : null}
+            </View>
+          </FadeInView>
+        ) : null}
+      </Card>
     </View>
   );
 }
@@ -241,6 +393,8 @@ export function SettingsScreen() {
           onPress={() => navigation.navigate('MySkills')}
         />
       </Group>
+
+      <NotificationsCard />
 
       <HapticsCard />
 

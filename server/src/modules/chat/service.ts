@@ -13,7 +13,7 @@ import type { MessageType } from '../../types/domain';
 import { ApiError } from '../../utils/errors';
 import { blockedByUser } from '../blocks/service';
 import { paginate, type Paginated } from '../../utils/pagination';
-import { notify, resolveNotifications } from '../notifications/service';
+import { actorData, notify, resolveNotifications } from '../notifications/service';
 
 /** Loads a conversation only if the caller is one of its two participants. */
 export async function assertMember(
@@ -201,10 +201,12 @@ export async function sendMessage(
   emitToUser(String(receiverId), RT.MESSAGE_NEW, populated.toJSON());
   emitToUser(senderId, RT.MESSAGE_NEW, populated.toJSON());
 
-  const sender = await User.findById(senderId).select('name').lean();
+  const sender = await User.findById(senderId).select('name profileImage').lean();
+  const conversationKey = `chat:${String(conversation._id)}`;
   await notify({
     user: receiverId,
     type: 'MESSAGE_RECEIVED',
+    // The sender is the headline and the message is the content, as in any messaging app.
     title: sender?.name ?? 'New message',
     body: preview,
     // Who it is from, so opening the alert lands in a chat that already knows its partner.
@@ -213,7 +215,12 @@ export async function sendMessage(
       partnerId: senderId,
       partnerName: sender?.name ?? '',
       screen: 'Chat',
+      ...actorData(sender),
     },
+    // One notification per chat on Android (the newest replaces the last), one stack per
+    // chat on iOS: a burst of messages never floods the tray.
+    tag: conversationKey,
+    threadId: conversationKey,
   });
 
   return populated;

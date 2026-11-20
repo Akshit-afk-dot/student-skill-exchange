@@ -41,6 +41,9 @@ const CATEGORY_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   Music: 'musical-notes',
   Photography: 'camera',
   Sports: 'basketball',
+  Dance: 'body',
+  'Arts & Crafts': 'brush',
+  'Health & Fitness': 'barbell',
 };
 
 function lookFor(name: string): { icon: keyof typeof Ionicons.glyphMap; tone: Tone } {

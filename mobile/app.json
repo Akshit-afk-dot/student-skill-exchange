@@ -54,7 +54,16 @@
         }
       ],
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notifications/notification-icon.png",
+          "color": "#5054B1",
+          "defaultChannel": "account"
+        }
+      ],
+      "./plugins/withNotificationIcons"
     ],
     "extra": {
       "apiUrl": "http://localhost:4000",

@@ -1,5 +1,26 @@
 import { z } from 'zod';
-import { SKILL_LEVELS, TEACHING_MODES } from '../../types/domain';
+import {
+  OPTIONAL_NOTIFICATION_CATEGORIES,
+  SKILL_LEVELS,
+  TEACHING_MODES,
+  type OptionalNotificationCategory,
+} from '../../types/domain';
+
+/** True for a time zone this server can format dates in, such as "Asia/Kolkata". */
+export function isTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** An IANA time zone name. Notification times are written in it. */
+export const timezoneSchema = z
+  .string()
+  .max(60)
+  .refine(isTimeZone, { message: 'Unknown time zone' });
 
 export const availabilitySlotSchema = z
   .object({
@@ -21,9 +42,18 @@ export const updateProfileSchema = z
     bio: z.string().trim().max(1000).optional(),
     languages: z.array(z.string().trim().min(1).max(40)).max(10).optional(),
     teachingMode: z.enum(TEACHING_MODES).optional(),
-    timezone: z.string().max(60).optional(),
+    timezone: timezoneSchema.optional(),
     city: z.string().trim().max(120).optional(),
     availability: z.array(availabilitySlotSchema).max(40).optional(),
+    /** Push switches. Only the categories sent change; the rest keep their value. */
+    notificationPrefs: z
+      .object(
+        Object.fromEntries(
+          OPTIONAL_NOTIFICATION_CATEGORIES.map((category) => [category, z.boolean().optional()]),
+        ) as Record<OptionalNotificationCategory, z.ZodOptional<z.ZodBoolean>>,
+      )
+      .strict()
+      .optional(),
   })
   .refine((body) => Object.keys(body).length > 0, { message: 'Nothing to update' });
 

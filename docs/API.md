@@ -64,7 +64,7 @@ form inputs.
 | GET | `/auth/verify-email?token=` | — | Target of the emailed link (returns HTML) |
 | POST | `/auth/resend-verification` | ✓ | Resend the verification email |
 | POST | `/auth/change-password` | ✓ | Change password; revokes other sessions |
-| POST/DELETE | `/auth/push-token` | ✓ | Register/unregister an FCM device token |
+| POST/DELETE | `/auth/push-token` | ✓ | Register/unregister this phone for push (`{ token, timezone? }`, an Expo push token) |
 
 <details>
 <summary><code>POST /auth/register</code></summary>
@@ -104,7 +104,7 @@ cannot be used to enumerate registered addresses.
 | GET | `/users` | optional | Skill-discovery search |
 | GET | `/users/facets` | — | Filter options (colleges, languages, top skills) |
 | GET | `/users/me` | ✓ | Own full profile |
-| PATCH | `/users/me` | ✓ | Update profile |
+| PATCH | `/users/me` | ✓ | Update profile, including `notificationPrefs` (push switches by category; only the keys sent change) |
 | PUT | `/users/me/location` | ✓ | Set coordinates for distance matching |
 | GET | `/users/:id` | optional | Another student's public profile |
 
@@ -132,13 +132,18 @@ only the city label.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/skills/categories` | — | The ten categories |
-| GET | `/skills` | — | Catalogue search (prefix-matched, for pickers) |
-| GET | `/skills/popular` | — | Most taught / most wanted |
-| GET | `/user-skills` | ✓ | Own teach + learn lists |
+| GET | `/skills/categories` | — | The 13 categories, in display order |
+| GET | `/skills` | — | Catalogue search over names and aliases (prefix-matched, for pickers). Approved skills only |
+| GET | `/skills/popular` | — | Most taught / most wanted (approved skills only) |
+| GET | `/skills/check?name=` | ✓ | What adding this name as a new skill would do (below) |
+| GET | `/user-skills` | ✓ | Own teach + learn lists. `skill.approved` is false while a skill the student added is in review |
 | POST | `/user-skills` | ✓ | Add a skill |
 | PATCH | `/user-skills/:id` | ✓ | Update level, priority, description |
 | DELETE | `/user-skills/:id` | ✓ | Remove |
+
+The catalogue (about 430 skills, with aliases such as "JS" for JavaScript) lives in
+`server/src/seed/catalog.ts` and is applied on every boot. Never rename an entry there: see
+the rules at the top of that file.
 
 <details>
 <summary><code>POST /user-skills</code></summary>
@@ -149,14 +154,42 @@ Either reference an existing skill:
 { "skillId": "…", "type": "TEACH", "level": "ADVANCED", "yearsOfExperience": 3 }
 ```
 
-…or propose a new one, which is created unapproved but immediately usable:
+…or name one, with a category in case it is new:
 
 ```json
-{ "skillName": "Rust", "categoryId": "…", "type": "TEACH", "level": "INTERMEDIATE" }
+{ "skillName": "Bonsai", "categoryId": "…", "type": "TEACH", "level": "INTERMEDIATE" }
 ```
+
+A name goes through the same checks as `GET /skills/check`:
+
+- A catalogue name or alias uses that skill ("JS" adds JavaScript).
+- A name that breaks the rules returns `422` with code `SKILL_NAME_REJECTED` and the reason.
+- A likely typo or a narrower wording of a catalogue skill ("Pyhton", "Advanced Excel")
+  returns `409` with code `SKILL_SUGGESTION` and `details.suggestionId` /
+  `details.suggestionName`. Send `"allowSimilar": true` to add the name anyway.
+- Otherwise the skill is created **in review**: usable by the students who list it at once,
+  hidden from search until an admin approves it or 3 different students have added it.
 
 `409` if the skill is already on that list. For `LEARN`, `priority` (1–3) weights the
 matcher.
+</details>
+
+<details>
+<summary><code>GET /skills/check?name=</code></summary>
+
+One of:
+
+```json
+{ "status": "EXISTING", "skill": { "id": "…", "name": "JavaScript", … } }
+{ "status": "SUGGESTION", "kind": "TYPO", "name": "Pyhton", "suggestion": { "name": "Python", … } }
+{ "status": "NEW", "name": "Bonsai", "students": 0 }
+{ "status": "INVALID", "problem": "GIBBERISH", "message": "That doesn't look like a skill's name. Check the spelling." }
+```
+
+`kind` is `TYPO` or `BROADER`. `name` is the tidied name the skill would get. `students` is
+how many have already added it while it waits for review. `problem` is one of `LENGTH`,
+`CHARACTERS`, `CONTACT`, `SENTENCE`, `PLACEHOLDER`, `TOO_GENERAL`, `GIBBERISH`,
+`INAPPROPRIATE` or `REMOVED`. The rules are in `server/src/modules/skills/quality.ts`.
 </details>
 
 ---
@@ -326,15 +359,19 @@ All routes require `role = ADMIN` (`403` otherwise).
 | POST | `/admin/reports/:id/claim` | Take ownership (`409` if not open) |
 | POST | `/admin/reports/:id/resolve` | Apply an action and close |
 | POST | `/admin/reviews/:id/visibility` | Hide / restore a review |
+| GET | `/admin/skills` | Every skill with who added it (`status`: `all`, `pending`, `approved`, `removed`; `q`, `category`) |
 | POST | `/admin/skills` | Add a curated skill |
-| POST | `/admin/skills/:id/approve` | Approve a proposed skill |
+| POST | `/admin/skills/:id/approve` | Approve a skill in review, or restore a removed one |
+| POST | `/admin/skills/:id/reject` | Remove a student-added skill (optional `reason`) |
 | POST | `/admin/skills/merge` | Fold a duplicate into the canonical skill |
 | GET | `/admin/audit-log` | Every moderation action |
 
 Moderating an account revokes all its refresh tokens immediately. Admin accounts cannot be
 moderated through this API. Hiding a review recomputes the reviewee's average. Merging
 skills repoints `UserSkill` rows, drops rows that would collide, and **recomputes**
-counters rather than adding them.
+counters rather than adding them. Removing a skill deletes it from every student's lists,
+sends each of them a `MODERATION_NOTICE`, and keeps the name from being added again until
+it is restored. Catalogue skills cannot be removed (the next deploy would restore them).
 
 ---
 

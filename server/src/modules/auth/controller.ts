@@ -21,6 +21,7 @@ import {
   googleSchema,
   loginSchema,
   pushTokenSchema,
+  removePushTokenSchema,
   refreshSchema,
   registerSchema,
   resetPasswordSchema,
@@ -211,7 +212,7 @@ authRouter.post(
   requireAuth,
   validate({ body: pushTokenSchema }),
   asyncHandler(async (req, res) => {
-    await registerPushToken(currentUserId(req), req.body.token);
+    await registerPushToken(currentUserId(req), req.body.token, req.body.timezone);
     res.json({ data: { success: true } });
   }),
 );
@@ -220,7 +221,7 @@ authRouter.post(
 authRouter.delete(
   '/push-token',
   requireAuth,
-  validate({ body: pushTokenSchema }),
+  validate({ body: removePushTokenSchema }),
   asyncHandler(async (req, res) => {
     await unregisterPushToken(currentUserId(req), req.body.token);
     res.json({ data: { success: true } });

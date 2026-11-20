@@ -65,8 +65,13 @@ export function MySkillsScreen() {
         <Row style={{ justifyContent: 'space-between' }}>
           <View style={{ flex: 1 }}>
             <Body>{entry.skill.name}</Body>
-            <Row gap={6} style={{ marginTop: 6 }}>
+            <Row gap={6} style={{ marginTop: 6, flexWrap: 'wrap' }}>
               <Chip label={LEVEL_LABEL[entry.level]} tone={tone} />
+              {/* A skill this student added that moderators have not approved yet: it is on
+                  their profile, but nobody else can find it in search. */}
+              {entry.skill.approved === false ? (
+                <Chip label="In review" tone="warning" icon="time-outline" />
+              ) : null}
               {entry.yearsOfExperience ? (
                 <Caption>
                   {entry.yearsOfExperience} yr{entry.yearsOfExperience === 1 ? '' : 's'}

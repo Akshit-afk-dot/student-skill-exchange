@@ -1,4 +1,8 @@
 import type { IUser, UserDoc } from '../../models';
+import {
+  OPTIONAL_NOTIFICATION_CATEGORIES,
+  type OptionalNotificationCategory,
+} from '../../types/domain';
 
 type UserLike = UserDoc | (IUser & { _id: unknown });
 
@@ -88,6 +92,8 @@ export interface SelfUser extends PublicUser {
     minutesLearned: number;
     longestStreak: number;
   };
+  /** Push switches, always complete: a category never set is on. */
+  notificationPrefs: Record<OptionalNotificationCategory, boolean>;
 }
 
 /** The richer view a student gets of their own account. */
@@ -107,6 +113,12 @@ export function selfUser(user: UserDoc): SelfUser {
       minutesLearned: user.stats?.minutesLearned ?? 0,
       longestStreak: user.stats?.longestStreak ?? 0,
     },
+    notificationPrefs: Object.fromEntries(
+      OPTIONAL_NOTIFICATION_CATEGORIES.map((category) => [
+        category,
+        user.notificationPrefs?.[category] !== false,
+      ]),
+    ) as Record<OptionalNotificationCategory, boolean>,
   };
   if (user.location?.coordinates) out.coordinates = user.location.coordinates;
   return out;

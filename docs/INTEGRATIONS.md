@@ -72,53 +72,54 @@ one of them is missing or misspelled.
 
 ---
 
-## 2. Firebase Cloud Messaging — push notifications
+## 2. Push notifications (Expo push service)
 
-Without this, notifications still appear in the app's notification centre and arrive over
-the socket in real time. FCM only adds the buzz when the app is **closed**.
+Without this, notifications still appear in the app's notification centre and as an
+in-app banner over the socket. Push adds the notification on the lock screen when the app
+is **closed**.
 
-### Server side
+Push goes through Expo's push service, which forwards each message to Google (Android) or
+Apple (iOS). The Firebase and Apple credentials are stored with the Expo project, so **the
+API server needs no push key at all**. The app registers itself with `POST /auth/push-token`
+the first time the student allows notifications.
+
+### Android (about 10 minutes)
 
 1. Create a project at [console.firebase.google.com](https://console.firebase.google.com).
    Analytics is not needed.
-2. **⚙ Project settings → Service accounts → Generate new private key.** A JSON file
-   downloads. **This file is a credential** — do not commit it.
-3. Open the JSON and copy three fields into your environment:
+2. **Project settings → Your apps → Add app → Android**, with the package name from
+   `mobile/app.json` (currently `com.akshitkumar.skillexchange`). Download
+   `google-services.json` into `mobile/`. It holds only public identifiers and is meant to
+   be committed; `mobile/app.config.js` picks it up automatically when it is there.
+3. **Project settings → Service accounts → Generate new private key.** A JSON file
+   downloads. **This file is a credential:** keep it out of the repository (`.gitignore`
+   already refuses `*firebase-adminsdk*.json`).
+4. Upload that key to Expo, from `mobile/`:
 
 ```bash
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-abc12@your-project-id.iam.gserviceaccount.com
-FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEvQIBADAN...\n-----END PRIVATE KEY-----\n
+npx eas-cli@latest credentials
 ```
 
-The private key contains newlines. Put it on **one line with literal `\n`** exactly as it
-appears in the JSON — the server converts them back to real newlines. In a `.env` file,
-wrap it in double quotes.
+   Choose **Android → preview** (or the profile you build with) **→ Google Service Account →
+   Manage your Google Service Account Key for Push Notifications (FCM V1) → Set up… →
+   Upload a new service account key**, and give it the path to the JSON from step 3.
 
-### App side
+5. Build a new APK. Push needs the native module, so Expo Go cannot receive it.
 
-Push tokens are registered by the app through `POST /auth/push-token`, which is already
-wired up. To actually receive pushes on a device you also need:
+### iOS
 
-1. **Firebase → Project settings → Your apps → Add app** for Android and/or iOS, using the
-   bundle identifier from `mobile/app.json` (currently `edu.college.skillexchange`).
-2. Download `google-services.json` (Android) / `GoogleService-Info.plist` (iOS) into
-   `mobile/`, and reference them in `app.json`:
+Needs the paid Apple Developer Program. EAS creates and stores Apple's push key itself
+during `eas build --platform ios`; there is no Firebase step for iOS.
 
-```json
-"android": { "googleServicesFile": "./google-services.json", … },
-"ios":     { "googleServicesFile": "./GoogleService-Info.plist", … }
-```
+### Optional server settings
 
-3. Push does **not** work in Expo Go on Android — it needs a development build:
+- `EXPO_ACCESS_TOKEN`: only if "enhanced push security" is turned on for the project at
+  expo.dev.
+- `PUSH_ENABLED=false`: stops all pushes from this server (a staging copy, say).
 
-```bash
-npx expo install expo-notifications
-eas build --profile development --platform android
-```
-
-**Verify:** the server logs `FCM initialised` at boot instead of
-`FCM credentials absent — push notifications disabled`.
+**Verify:** in the app, Settings → Notifications says "On for this phone". If it shows "This
+phone couldn't be set up for notifications yet", the build has no `google-services.json`.
+Then send a chat message to that student from another account, with the app closed.
 
 ---
 
@@ -244,6 +245,6 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for the hosting walkthrough. In short:
 | `CORS_ORIGINS` | Admin dashboard | Refuses to start in production |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | First admin | No admin account is created |
 | `CLOUDINARY_*` | Durable uploads | Local disk; lost on redeploy |
-| `FIREBASE_*` | Push notifications | In-app + realtime only |
+| `EXPO_ACCESS_TOKEN` | Push, only with enhanced push security on | Push works without it |
 | `GOOGLE_CLIENT_IDS` | Google sign-in | Button hidden; endpoint returns 501 |
 | `SMTP_*` | Real emails | Written to the server log |

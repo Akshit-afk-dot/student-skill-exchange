@@ -165,10 +165,18 @@ One user-facing event reaches three channels:
 
 1. **Persisted** — a `Notification` row (the notification centre)
 2. **Realtime** — socket emit, if connected
-3. **Push** — FCM, if configured and the user has device tokens
+3. **Push** — through Expo's push service to every phone the student is signed in on,
+   unless they switched that kind off (Settings → Notifications). Not awaited, so a slow
+   push service never slows the request that caused it.
 
 `notify()` never throws. A failed notification must not roll back the action that caused
 it: a session should still be scheduled even if the reminder email bounces.
+
+Each notification type belongs to a category (`NOTIFICATION_CATEGORY` in
+`types/domain.ts`): messages, requests, reminders, sessions, achievements, account. The
+category decides the Android channel, the status-bar icon, the iOS interruption level and
+which switch controls it (`DELIVERY` in `modules/notifications/push.ts`). Account notices
+have no switch.
 
 ---
 
@@ -179,7 +187,7 @@ Three integrations are optional, and each falls back rather than failing:
 | Integration | Without credentials |
 |---|---|
 | Cloudinary | Uploads write to local disk, served by the API |
-| Firebase (FCM) | Push disabled; in-app and realtime notifications still work |
+| Push (Expo) | Needs no server key. Until the app build has Firebase set up, phones get in-app and realtime notifications only |
 | SMTP | Verification links and reset codes written to the server log |
 
 This is why a fresh clone runs end to end with nothing but a MongoDB connection string.

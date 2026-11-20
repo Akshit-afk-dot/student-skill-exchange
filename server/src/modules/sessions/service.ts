@@ -12,7 +12,8 @@ import { POINTS, type SessionMode, type SessionStatus } from '../../types/domain
 import { ApiError } from '../../utils/errors';
 import { paginate, type Paginated } from '../../utils/pagination';
 import { evaluateBadges, touchStreak } from '../gamification/service';
-import { notify, resolveNotifications } from '../notifications/service';
+import { clip, formatWhen, sessionPlace } from '../notifications/format';
+import { actorData, notify, resolveNotifications, timeZoneOf } from '../notifications/service';
 
 export interface CreateSessionInput {
   /** The other participant. The caller's role determines who teaches. */
@@ -132,13 +133,17 @@ export async function createSession(
   });
 
   const partnerId = String(input.role === 'TEACHER' ? learner : teacher);
-  const creator = await User.findById(userId).select('name').lean();
+  const [creator, zone] = await Promise.all([
+    User.findById(userId).select('name profileImage').lean(),
+    timeZoneOf(partnerId),
+  ]);
   await notify({
     user: partnerId,
     type: 'SESSION_SCHEDULED',
-    title: 'New session scheduled',
-    body: `${creator?.name ?? 'A student'} scheduled a ${skill.name} session for ${input.scheduledAt.toUTCString()}`,
-    data: { sessionId: String(session._id), screen: 'SessionDetails' },
+    title: `${skill.name} session booked`,
+    body: `${creator?.name ?? 'Your partner'} booked ${formatWhen(input.scheduledAt, zone)} · ${sessionPlace(input.mode, input.location)}`,
+    data: { sessionId: String(session._id), screen: 'SessionDetails', ...actorData(creator) },
+    collapseId: `session:${String(session._id)}`,
   });
   emitToUser(partnerId, RT.SESSION_UPDATED, { sessionId: String(session._id) });
 
@@ -235,12 +240,23 @@ export async function updateSession(
   await session.save();
 
   const otherId = String(session.teacher) === userId ? session.learner : session.teacher;
+  const [editor, skill, zone] = await Promise.all([
+    User.findById(userId).select('name profileImage').lean(),
+    Skill.findById(session.skill).select('name').lean(),
+    timeZoneOf(otherId),
+  ]);
+  const skillName = skill?.name ?? 'Your';
+  const who = editor?.name ?? 'Your partner';
   await notify({
     user: otherId,
     type: 'SESSION_SCHEDULED',
-    title: 'Session updated',
-    body: 'A session on your calendar was changed. Check the new details.',
-    data: { sessionId: String(session._id), screen: 'SessionDetails' },
+    // A new time is the news; anything else is a detail they can open.
+    title: patch.scheduledAt ? `${skillName} session moved` : `${skillName} session updated`,
+    body: patch.scheduledAt
+      ? `Now ${formatWhen(session.scheduledAt, zone)} · ${sessionPlace(session.mode, session.location)}`
+      : `${who} changed the details for ${formatWhen(session.scheduledAt, zone)}.`,
+    data: { sessionId: String(session._id), screen: 'SessionDetails', ...actorData(editor) },
+    collapseId: `session:${String(session._id)}`,
   });
   emitToUser(String(otherId), RT.SESSION_UPDATED, { sessionId: String(session._id) });
 
@@ -286,13 +302,21 @@ export async function cancelSession(sessionId: string, userId: string, reason?: 
   );
 
   const otherId = String(session.teacher) === userId ? session.learner : session.teacher;
-  const canceller = await User.findById(userId).select('name').lean();
+  const [canceller, skill, zone] = await Promise.all([
+    User.findById(userId).select('name profileImage').lean(),
+    Skill.findById(session.skill).select('name').lean(),
+    timeZoneOf(otherId),
+  ]);
   await notify({
     user: otherId,
     type: 'SESSION_CANCELLED',
-    title: 'Session cancelled',
-    body: `${canceller?.name ?? 'A student'} cancelled your session${reason ? `: ${reason}` : ''}`,
-    data: { sessionId: String(session._id), screen: 'MySessions' },
+    title: `${skill?.name ?? 'Your'} session cancelled`,
+    body:
+      `${canceller?.name ?? 'Your partner'} cancelled ${formatWhen(session.scheduledAt, zone)}.` +
+      (reason?.trim() ? ` “${clip(reason, 90)}”` : ''),
+    data: { sessionId: String(session._id), screen: 'MySessions', ...actorData(canceller) },
+    // Replaces the "booked" notification if it is still on their phone.
+    collapseId: `session:${String(session._id)}`,
   });
   emitToUser(String(otherId), RT.SESSION_UPDATED, { sessionId: String(session._id) });
 
@@ -339,12 +363,17 @@ export async function completeSession(
   if (!bothConfirmed) {
     await session.save();
     const otherId = String(session.teacher) === userId ? session.learner : session.teacher;
+    const [marker, skill] = await Promise.all([
+      User.findById(userId).select('name profileImage').lean(),
+      Skill.findById(session.skill).select('name').lean(),
+    ]);
     await notify({
       user: otherId,
       type: 'SESSION_COMPLETED',
-      title: 'Confirm your session',
-      body: 'Your partner marked a session as done. Confirm it to unlock ratings.',
-      data: { sessionId: String(session._id), screen: 'SessionDetails' },
+      title: `${skill?.name ?? 'Your'} session marked done`,
+      body: `${marker?.name ?? 'Your partner'} marked it done. Your confirmation opens reviews for you both.`,
+      data: { sessionId: String(session._id), screen: 'SessionDetails', ...actorData(marker) },
+      collapseId: `session:${String(session._id)}`,
     });
     return { session, fullyCompleted: false };
   }
@@ -395,20 +424,25 @@ async function applyCompletionRewards(session: SessionDoc): Promise<void> {
   await Promise.all([touchStreak(session.teacher), touchStreak(session.learner)]);
   await Promise.all([evaluateBadges(session.teacher), evaluateBadges(session.learner)]);
 
+  const skill = await Skill.findById(session.skill).select('name').lean();
+  const title = `${skill?.name ?? 'Your'} session complete`;
+  const sessionKey = `session:${String(session._id)}`;
   await Promise.all([
     notify({
       user: session.teacher,
       type: 'SESSION_COMPLETED',
-      title: 'Session complete',
-      body: `You earned ${POINTS.SESSION_TAUGHT} points for teaching. Leave a rating for your student.`,
+      title,
+      body: `You earned ${POINTS.SESSION_TAUGHT} points for teaching. Reviews are open.`,
       data: { sessionId: String(session._id), screen: 'Reviews' },
+      collapseId: sessionKey,
     }),
     notify({
       user: session.learner,
       type: 'SESSION_COMPLETED',
-      title: 'Session complete',
-      body: `You earned ${POINTS.SESSION_LEARNED} points. Leave a rating for your teacher.`,
+      title,
+      body: `You earned ${POINTS.SESSION_LEARNED} points for learning. Reviews are open.`,
       data: { sessionId: String(session._id), screen: 'Reviews' },
+      collapseId: sessionKey,
     }),
   ]);
 }

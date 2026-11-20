@@ -59,9 +59,17 @@ const schema = z.object({
   UPLOAD_DIR: z.string().default('uploads'),
   MAX_UPLOAD_MB: z.coerce.number().positive().default(5),
 
-  FIREBASE_PROJECT_ID: z.string().optional(),
-  FIREBASE_CLIENT_EMAIL: z.string().optional(),
-  FIREBASE_PRIVATE_KEY: z.string().optional(),
+  /**
+   * Push goes through Expo's push service, which needs no key by default: the Firebase and
+   * Apple credentials live with the Expo project. Set this only if "enhanced push security"
+   * is turned on for the project at expo.dev.
+   */
+  EXPO_ACCESS_TOKEN: z.string().optional(),
+  /** Set to false to stop all push delivery, for example on a staging copy of the API. */
+  PUSH_ENABLED: z
+    .string()
+    .default('true')
+    .transform((v) => !['0', 'false', 'no', 'off'].includes(v.toLowerCase())),
 
   GOOGLE_CLIENT_IDS: csv,
 
@@ -137,9 +145,8 @@ export const storageDriver: 'cloudinary' | 'local' =
     ? 'cloudinary'
     : 'local';
 
-export const pushEnabled = Boolean(
-  env.FIREBASE_PROJECT_ID && env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY,
-);
+/** Tests never reach Expo's servers; they swap in a fake transport instead (push.ts). */
+export const pushEnabled = env.PUSH_ENABLED && !isTest;
 
 export const mailEnabled = Boolean(env.SMTP_HOST && env.SMTP_PORT);
 

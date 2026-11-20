@@ -92,18 +92,27 @@ export interface AdminReport {
   createdAt: string;
 }
 
-/** Shape returned by GET /skills — note `id`, not `_id`. */
+/** Shape returned by GET /admin/skills — note `id`, not `_id`. */
 export interface AdminSkill {
   id: string;
   name: string;
   slug: string;
   category: { id: string; name: string } | null;
   description?: string;
+  aliases?: string[];
+  /** In the shared catalogue. False while in review, and once removed. */
   approved: boolean;
+  approvedVia?: 'CATALOGUE' | 'ADMIN' | 'COMMUNITY';
+  rejectedAt?: string;
+  rejectReason?: string;
   teachCount: number;
   learnCount: number;
+  /** The student who added it; null for catalogue skills. */
+  createdBy?: { id: string; name: string; email: string } | null;
   createdAt: string;
 }
+
+export type SkillReviewStatus = 'all' | 'pending' | 'approved' | 'removed';
 
 export interface SkillCategory {
   id: string;

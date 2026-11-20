@@ -53,7 +53,10 @@ export async function touchStreak(userId: string | Types.ObjectId): Promise<numb
 interface BadgeRule {
   badge: Badge;
   label: string;
+  /** The goal, as shown on the badges screen before it is earned. */
   description: string;
+  /** What the student did, for the notification that announces it. */
+  earned: string;
   test(ctx: BadgeContext): boolean;
 }
 
@@ -68,42 +71,49 @@ export const BADGE_RULES: BadgeRule[] = [
     badge: 'FIRST_SESSION',
     label: 'First Session',
     description: 'Complete your first learning session',
+    earned: 'Your first session is done. The first of many.',
     test: ({ user }) => user.stats.sessionsTaught + user.stats.sessionsLearned >= 1,
   },
   {
     badge: 'TOP_MENTOR',
     label: 'Top Mentor',
     description: 'Teach 10 sessions while holding a 4.5+ rating',
+    earned: 'Ten sessions taught, with a 4.5+ rating.',
     test: ({ user }) => user.stats.sessionsTaught >= 10 && user.ratingAvg >= 4.5,
   },
   {
     badge: 'LEARNING_STREAK',
     label: 'Learning Streak',
     description: 'Stay active 7 days in a row',
+    earned: 'Seven days active in a row.',
     test: ({ user }) => user.stats.longestStreak >= 7,
   },
   {
     badge: 'HIGHLY_RATED',
     label: 'Highly Rated',
     description: 'Hold a 4.5+ average across at least 5 reviews',
+    earned: 'A 4.5+ average across five or more reviews.',
     test: ({ user }) => user.ratingCount >= 5 && user.ratingAvg >= 4.5,
   },
   {
     badge: 'KNOWLEDGE_SHARER',
     label: 'Knowledge Sharer',
     description: 'Offer 3 or more skills to teach',
+    earned: 'You offer three or more skills to teach.',
     test: ({ distinctSkillsTaught }) => distinctSkillsTaught >= 3,
   },
   {
     badge: 'COMMUNITY_HELPER',
     label: 'Community Helper',
     description: 'Earn 500 points',
+    earned: 'You have earned 500 points.',
     test: ({ user }) => user.stats.points >= 500,
   },
   {
     badge: 'POLYGLOT',
     label: 'Polyglot',
     description: 'List 3 or more languages you speak',
+    earned: 'You speak three or more languages.',
     test: ({ user }) => (user.languages?.length ?? 0) >= 3,
   },
 ];
@@ -135,8 +145,8 @@ export async function evaluateBadges(userId: string | Types.ObjectId): Promise<B
       await notify({
         user: user._id,
         type: 'BADGE_EARNED',
-        title: `Badge earned: ${rule?.label ?? badge}`,
-        body: rule?.description ?? 'You unlocked a new badge',
+        title: `New badge: ${rule?.label ?? badge}`,
+        body: rule?.earned ?? 'You unlocked a new badge.',
         data: { badge, screen: 'Badges' },
       });
     }

@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { EXPO_PUSH_TOKEN } from '../notifications/push';
+import { timezoneSchema } from '../users/validators';
 
 /**
  * Password policy: length is the dominant factor in resistance to guessing, so the
@@ -59,7 +61,13 @@ export const changePasswordSchema = z.object({
 });
 
 export const pushTokenSchema = z.object({
-  token: z.string().min(10).max(512),
+  token: z.string().max(256).regex(EXPO_PUSH_TOKEN, 'Not an Expo push token'),
+  /** The phone's time zone, so notification times are written in the student's own. */
+  timezone: timezoneSchema.optional(),
+});
+
+export const removePushTokenSchema = z.object({
+  token: z.string().min(1).max(256),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

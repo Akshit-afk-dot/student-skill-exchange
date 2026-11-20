@@ -1,6 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { notifications as notificationsApi } from '../api/endpoints';
@@ -15,36 +13,16 @@ import {
   Row,
   Screen,
   TextButton,
-  toneColours,
-  type Tone,
 } from '../components/ui';
 import { haptics } from '../haptics';
 import { useAction, useAsync } from '../hooks/useAsync';
 import { useAuth } from '../store/auth';
+import { dismissFromTray, setAppBadge } from '../notifications/device';
+import { openNotification } from '../notifications/open';
+import { NotificationGlyph } from '../notifications/visuals';
 import { useTheme } from '../theme';
 import type { AppNotification } from '../types';
 import { timeAgo } from '../utils/format';
-import type { RootStackParamList } from '../navigation/types';
-
-/**
- * Icon and tone per notification type. Colour follows the app-wide meanings: green for
- * something that went right, gold for rewards, the brand for everything routine. Red is
- * kept for genuine problems, so a declined request is neutral, not an error.
- */
-const META: Record<string, { icon: keyof typeof Ionicons.glyphMap; tone: Tone }> = {
-  REQUEST_RECEIVED: { icon: 'mail-outline', tone: 'primary' },
-  REQUEST_ACCEPTED: { icon: 'checkmark-circle-outline', tone: 'success' },
-  REQUEST_REJECTED: { icon: 'close-circle-outline', tone: 'neutral' },
-  MESSAGE_RECEIVED: { icon: 'chatbubble-outline', tone: 'primary' },
-  SESSION_SCHEDULED: { icon: 'calendar-outline', tone: 'primary' },
-  SESSION_REMINDER: { icon: 'alarm-outline', tone: 'primary' },
-  SESSION_CANCELLED: { icon: 'close-circle-outline', tone: 'neutral' },
-  SESSION_COMPLETED: { icon: 'checkmark-done-outline', tone: 'success' },
-  REVIEW_RECEIVED: { icon: 'star-outline', tone: 'reward' },
-  NEW_MATCH: { icon: 'sparkles-outline', tone: 'primary' },
-  BADGE_EARNED: { icon: 'trophy-outline', tone: 'reward' },
-  MODERATION_NOTICE: { icon: 'warning-outline', tone: 'warning' },
-};
 
 /**
  * The notification centre: only what still needs attention.
@@ -56,7 +34,6 @@ const META: Record<string, { icon: keyof typeof Ionicons.glyphMap; tone: Tone }>
  */
 export function NotificationsScreen() {
   const t = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const state = useAsync(async () => notificationsApi.list({ unreadOnly: true, page: 1 }), []);
   // Opened items disappear at once, before the server confirms, so the list never lags the tap.
@@ -65,6 +42,9 @@ export function NotificationsScreen() {
   const clearAll = useAction(async () => {
     await notificationsApi.markAllRead();
     haptics.success();
+    // Nothing is news any more, on the phone's lock screen either.
+    void dismissFromTray(() => true);
+    setAppBadge(0);
     state.refresh();
   });
 
@@ -89,44 +69,10 @@ export function NotificationsScreen() {
   /** Dismisses a notification and routes to the screen its payload points at. */
   function open(item: AppNotification) {
     setDismissed((prev) => new Set(prev).add(item._id));
-    void notificationsApi.markRead([item._id]).catch(() => undefined);
-
-    const data = item.data ?? {};
-    switch (data.screen) {
-      case 'Chat':
-        if (data.conversationId) {
-          navigation.navigate('Chat', {
-            conversationId: data.conversationId,
-            partnerName: data.partnerName || item.title,
-            partnerId: data.partnerId ?? '',
-          });
-        }
-        break;
-      case 'SessionDetails':
-        if (data.sessionId) navigation.navigate('SessionDetails', { sessionId: data.sessionId });
-        break;
-      case 'Reviews':
-        // "Rate your session" opens the session, where the rating button is; a new review
-        // received opens the reviews about you.
-        if (data.sessionId) navigation.navigate('SessionDetails', { sessionId: data.sessionId });
-        else if (user) navigation.navigate('Reviews', { userId: user.id, userName: user.name });
-        break;
-      case 'LearningRequests':
-        navigation.navigate('LearningRequests');
-        break;
-      case 'MySessions':
-        navigation.navigate('MySessions');
-        break;
-      case 'Badges':
-        navigation.navigate('Badges');
-        break;
-      case 'Settings':
-        navigation.navigate('Settings');
-        break;
-      default:
-        // Unknown deep link: dismissed, and the student stays here.
-        break;
-    }
+    // Its copy in the phone's tray is stale now too.
+    void dismissFromTray((data) => data.notificationId === item._id);
+    // Unknown destinations still count as opened; the student simply stays here.
+    openNotification({ ...item.data, notificationId: item._id }, user ? { id: user.id, name: user.name } : null, item.title);
   }
 
   const items = (state.data?.items ?? []).filter((n) => !n.read && !dismissed.has(n._id));
@@ -177,9 +123,6 @@ export function NotificationsScreen() {
           }
           ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: t.colors.border }} />}
           renderItem={({ item, index }) => {
-            const meta = META[item.type] ?? { icon: 'notifications-outline' as const, tone: 'primary' as Tone };
-            const tint = toneColours(t, meta.tone);
-
             return (
               <AnimatedListItem index={index}>
                 <PressableScale
@@ -189,18 +132,7 @@ export function NotificationsScreen() {
                   accessibilityHint="Opens it and removes it from this list"
                   style={{ flexDirection: 'row', gap: t.spacing.md, paddingVertical: t.spacing.md }}
                 >
-                  <View
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: tint.bg,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Ionicons name={meta.icon} size={19} color={tint.fg} />
-                  </View>
+                  <NotificationGlyph type={item.type} data={item.data} size={42} ring={t.colors.background} />
 
                   <View style={{ flex: 1 }}>
                     <Heading numberOfLines={2}>{item.title}</Heading>

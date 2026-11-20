@@ -101,7 +101,7 @@ export async function deleteAccount(userId: string): Promise<{ email: string; na
       user: partner,
       type: 'SESSION_CANCELLED',
       title: 'Session cancelled',
-      body: 'An upcoming session was cancelled because the other student deleted their account.',
+      body: 'Your partner deleted their account, so an upcoming session is off.',
       data: { screen: 'MySessions' },
     });
   }

@@ -17,7 +17,7 @@ import {
 import type { ModerationAction, ReportStatus, UserStatus } from '../../types/domain';
 import { ApiError } from '../../utils/errors';
 import { paginate, type Paginated } from '../../utils/pagination';
-import { notify } from '../notifications/service';
+import { notify, notifyMany } from '../notifications/service';
 import { revokeAllForUser } from '../auth/tokens';
 import { recalculateRating } from '../users/service';
 
@@ -118,7 +118,7 @@ export async function dashboardStats(): Promise<DashboardStats> {
     ]),
     Report.countDocuments({ status: { $in: ['OPEN', 'REVIEWING'] } }),
     Skill.countDocuments(),
-    Skill.countDocuments({ approved: false }),
+    Skill.countDocuments({ approved: false, rejectedAt: null }),
     SkillCategory.countDocuments(),
     User.aggregate<{ _id: string; signups: number }>([
       { $match: { role: 'STUDENT', createdAt: { $gte: monthAgo } } },
@@ -260,11 +260,15 @@ export async function moderateUser(
     type: 'MODERATION_NOTICE',
     title:
       input.status === 'ACTIVE'
-        ? 'Your account has been reinstated'
+        ? 'Account reinstated'
         : input.status === 'SUSPENDED'
-          ? 'Your account has been suspended'
-          : 'Your account has been banned',
-    body: input.reason ?? 'Contact support if you believe this was a mistake.',
+          ? 'Account suspended'
+          : 'Account banned',
+    body:
+      input.reason ??
+      (input.status === 'ACTIVE'
+        ? 'You can use Skill Exchange as normal again.'
+        : 'If you think this is a mistake, contact support from Settings.'),
     data: { screen: 'Settings' },
   });
 
@@ -354,7 +358,7 @@ export async function resolveReport(
       await notify({
         user: report.reportedUser,
         type: 'MODERATION_NOTICE',
-        title: 'A warning about your recent activity',
+        title: 'A warning from moderators',
         body:
           input.resolutionNote ??
           'Another student reported your conduct. Please review the community guidelines.',
@@ -400,10 +404,136 @@ export async function setReviewHidden(
   return review;
 }
 
+/* ---------- Skill review ---------- */
+
+export const SKILL_REVIEW_STATUSES = ['all', 'pending', 'approved', 'removed'] as const;
+export type SkillReviewStatus = (typeof SKILL_REVIEW_STATUSES)[number];
+
+export interface AdminSkillView {
+  id: string;
+  name: string;
+  slug: string;
+  category: { id: string; name: string } | null;
+  aliases: string[];
+  approved: boolean;
+  approvedVia?: string;
+  rejectedAt?: string;
+  rejectReason?: string;
+  teachCount: number;
+  learnCount: number;
+  createdBy: { id: string; name: string; email: string } | null;
+  createdAt: string;
+}
+
+/**
+ * Skills for the admin review screen. Unlike the public search this includes skills in
+ * review and removed ones, and says who added each. "all" leaves removed skills out and
+ * lists those in review first; "pending" lists the oldest first, as a queue.
+ */
+export async function listSkillsForReview(input: {
+  status: SkillReviewStatus;
+  q?: string;
+  category?: string;
+  page: number;
+  limit: number;
+}): Promise<Paginated<AdminSkillView>> {
+  const filter: Record<string, unknown> = {};
+  if (input.status === 'pending') Object.assign(filter, { approved: false, rejectedAt: null });
+  else if (input.status === 'approved') filter.approved = true;
+  else if (input.status === 'removed') filter.rejectedAt = { $ne: null };
+  else filter.rejectedAt = null;
+  if (input.category) filter.category = new Types.ObjectId(input.category);
+  if (input.q) {
+    const rx = new RegExp(input.q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    filter.$or = [{ name: rx }, { aliases: rx }];
+  }
+
+  const sort: Record<string, 1 | -1> =
+    input.status === 'pending' ? { createdAt: 1 } : input.status === 'all' ? { approved: 1, name: 1 } : { name: 1 };
+  const skip = (input.page - 1) * input.limit;
+  const [rows, total] = await Promise.all([
+    Skill.find(filter)
+      .populate<{ category: { _id: Types.ObjectId; name: string } | null }>('category', 'name')
+      .populate<{ createdBy: { _id: Types.ObjectId; name: string; email: string } | null }>('createdBy', 'name email')
+      .sort(sort)
+      // Alphabetical as people read it: "Ableton" before "AWS".
+      .collation({ locale: 'en', strength: 2 })
+      .skip(skip)
+      .limit(input.limit)
+      .lean(),
+    Skill.countDocuments(filter),
+  ]);
+
+  const items = rows.map((row): AdminSkillView => {
+    const view: AdminSkillView = {
+      id: String(row._id),
+      name: row.name,
+      slug: row.slug,
+      category: row.category ? { id: String(row.category._id), name: row.category.name } : null,
+      aliases: row.aliases,
+      approved: row.approved,
+      teachCount: row.teachCount,
+      learnCount: row.learnCount,
+      createdBy: row.createdBy
+        ? { id: String(row.createdBy._id), name: row.createdBy.name, email: row.createdBy.email }
+        : null,
+      createdAt: new Date(row.createdAt).toISOString(),
+    };
+    if (row.approvedVia) view.approvedVia = row.approvedVia;
+    if (row.rejectedAt) view.rejectedAt = new Date(row.rejectedAt).toISOString();
+    if (row.rejectReason) view.rejectReason = row.rejectReason;
+    return view;
+  });
+  return paginate(items, total, { page: input.page, limit: input.limit });
+}
+
+/** Approves a skill in review, or restores a removed one, into the shared catalogue. */
 export async function approveSkill(adminId: string, skillId: string, ip?: string) {
-  const skill = await Skill.findByIdAndUpdate(skillId, { $set: { approved: true } }, { returnDocument: 'after' });
+  const skill = await Skill.findByIdAndUpdate(
+    skillId,
+    { $set: { approved: true, approvedVia: 'ADMIN' }, $unset: { rejectedAt: 1, rejectReason: 1 } },
+    { returnDocument: 'after' },
+  );
   if (!skill) throw ApiError.notFound('Skill not found');
   await recordAudit(adminId, 'skill.approve', 'Skill', skillId, {}, ip);
+  return skill;
+}
+
+/**
+ * Removes a skill students added: it leaves every student's list, and its name can never
+ * be added again (the row stays, marked removed, so the check can say so). Each student
+ * who listed it is told. Seeded catalogue skills are managed in `seed/catalog.ts` instead,
+ * since the next deploy would bring them back.
+ */
+export async function rejectSkill(adminId: string, skillId: string, reason: string | undefined, ip?: string) {
+  const skill = await Skill.findById(skillId);
+  if (!skill) throw ApiError.notFound('Skill not found');
+  if (skill.approvedVia === 'CATALOGUE') {
+    throw ApiError.badRequest('Catalogue skills can\'t be removed here. Merge it into another skill, or take it out of the catalogue file.');
+  }
+  if (skill.rejectedAt) return skill;
+
+  const students = await UserSkill.distinct('user', { skill: skill._id });
+  await UserSkill.deleteMany({ skill: skill._id });
+
+  skill.approved = false;
+  skill.approvedVia = undefined;
+  skill.rejectedAt = new Date();
+  skill.rejectReason = reason;
+  skill.teachCount = 0;
+  skill.learnCount = 0;
+  await skill.save();
+
+  await notifyMany(students, {
+    type: 'MODERATION_NOTICE',
+    title: 'A skill was removed',
+    body:
+      `Moderators removed “${skill.name}” from your skills` +
+      (reason?.trim() ? `: ${reason.trim().replace(/[.\s]+$/, '')}.` : '. Your other skills are unchanged.'),
+    data: { screen: 'MySkills' },
+  });
+
+  await recordAudit(adminId, 'skill.reject', 'Skill', skillId, { name: skill.name, reason, students: students.length }, ip);
   return skill;
 }
 
@@ -425,6 +555,7 @@ export async function createSkill(
     description: input.description,
     aliases: input.aliases ?? [],
     approved: true,
+    approvedVia: 'ADMIN',
     createdBy: adminId,
   });
 
@@ -450,6 +581,7 @@ export async function mergeSkills(
 
   const [source, target] = await Promise.all([Skill.findById(sourceId), Skill.findById(targetId)]);
   if (!source || !target) throw ApiError.notFound('Skill not found');
+  if (target.rejectedAt) throw ApiError.badRequest('Cannot merge into a removed skill');
 
   const rows = await UserSkill.find({ skill: source._id }).lean();
 

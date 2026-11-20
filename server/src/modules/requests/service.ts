@@ -14,7 +14,8 @@ import type { RequestStatus } from '../../types/domain';
 import { ApiError } from '../../utils/errors';
 import { isBlockedBetween } from '../blocks/service';
 import { paginate, type Paginated } from '../../utils/pagination';
-import { notify, resolveNotifications } from '../notifications/service';
+import { clip } from '../notifications/format';
+import { actorData, notify, resolveNotifications } from '../notifications/service';
 
 export interface CreateRequestInput {
   receiverId: string;
@@ -84,13 +85,15 @@ export async function createRequest(
     throw err;
   }
 
-  const sender = await User.findById(senderId).select('name').lean();
+  const sender = await User.findById(senderId).select('name profileImage').lean();
+  // Their own words, when they wrote any, are the most persuasive part of a request.
+  const note = input.message?.trim() ? ` “${clip(input.message, 90)}”` : '';
   await notify({
     user: receiver._id,
     type: 'REQUEST_RECEIVED',
-    title: 'New learning request',
-    body: `${sender?.name ?? 'A student'} wants to learn ${skill.name} from you`,
-    data: { requestId: String(request._id), screen: 'LearningRequests' },
+    title: sender?.name ?? 'New learning request',
+    body: `Wants to learn ${skill.name} from you.${note}`,
+    data: { requestId: String(request._id), screen: 'LearningRequests', ...actorData(sender) },
   });
   emitToUser(String(receiver._id), RT.REQUEST_NEW, { requestId: String(request._id) });
 
@@ -203,20 +206,21 @@ export async function acceptRequest(requestId: string, userId: string) {
   );
 
   const [receiver, skill] = await Promise.all([
-    User.findById(request.receiver).select('name').lean(),
+    User.findById(request.receiver).select('name profileImage').lean(),
     Skill.findById(request.skill).select('name').lean(),
   ]);
 
   await notify({
     user: request.sender,
     type: 'REQUEST_ACCEPTED',
-    title: 'Request accepted',
-    body: `${receiver?.name ?? 'Your request'} accepted your request to learn ${skill?.name ?? 'a skill'}`,
+    title: receiver?.name ?? 'Request accepted',
+    body: `Accepted your request to learn ${skill?.name ?? 'their skill'}. You’re connected.`,
     data: {
       conversationId: String(conversationId),
       partnerId: String(request.receiver),
       partnerName: receiver?.name ?? '',
       screen: 'Chat',
+      ...actorData(receiver),
     },
   });
   emitToUser(String(request.sender), RT.REQUEST_UPDATED, {
@@ -241,11 +245,12 @@ export async function rejectRequest(requestId: string, userId: string) {
 
   // Deliberately vague, and not pushed to the device: a rejection does not need to
   // buzz someone's phone, and naming the rejecter invites hard feelings.
+  const skill = await Skill.findById(request.skill).select('name').lean();
   await notify({
     user: request.sender,
     type: 'REQUEST_REJECTED',
-    title: 'Request declined',
-    body: 'One of your learning requests was declined. Plenty of other students teach this skill.',
+    title: 'Request not accepted',
+    body: `Your request to learn ${skill?.name ?? 'a skill'} wasn’t accepted this time. Other students teach it too.`,
     data: { requestId: String(request._id), screen: 'LearningRequests' },
     push: false,
   });

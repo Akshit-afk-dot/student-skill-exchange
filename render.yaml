@@ -41,11 +41,7 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-      - key: FIREBASE_PROJECT_ID
-        sync: false
-      - key: FIREBASE_CLIENT_EMAIL
-        sync: false
-      - key: FIREBASE_PRIVATE_KEY
+      - key: EXPO_ACCESS_TOKEN
         sync: false
       - key: GOOGLE_CLIENT_IDS
         sync: false

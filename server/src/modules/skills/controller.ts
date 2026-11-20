@@ -25,11 +25,14 @@ const addUserSkillSchema = z
     yearsOfExperience: z.coerce.number().min(0).max(50).optional(),
     description: z.string().trim().max(300).optional(),
     priority: z.coerce.number().int().min(1).max(3).optional(),
+    allowSimilar: z.boolean().optional(),
   })
   .refine((v) => Boolean(v.skillId) || Boolean(v.skillName && v.categoryId), {
     message: 'Provide either skillId, or skillName together with categoryId',
     path: ['skillId'],
   });
+
+const checkSkillSchema = z.object({ name: z.string().trim().min(1).max(120) });
 
 const updateUserSkillSchema = z
   .object({
@@ -55,6 +58,22 @@ skillsRouter.get(
   '/popular',
   asyncHandler(async (_req, res) => {
     res.json({ data: await service.popularSkills() });
+  }),
+);
+
+/**
+ * GET /skills/check?name= — what would happen if the caller added this name as a new
+ * skill: it already exists, "did you mean…?", it can be added, or why it cannot. The app
+ * asks as the student types, so they see the verdict before submitting. Signed-in only:
+ * each call reads the whole catalogue.
+ */
+skillsRouter.get(
+  '/check',
+  requireAuth,
+  validate({ query: checkSkillSchema }),
+  asyncHandler(async (req, res) => {
+    const { name } = validatedQuery<z.infer<typeof checkSkillSchema>>(req);
+    res.json({ data: await service.checkSkillName(name) });
   }),
 );
 

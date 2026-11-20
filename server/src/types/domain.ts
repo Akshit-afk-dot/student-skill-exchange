@@ -24,6 +24,9 @@ export const SKILL_CATEGORIES = [
   'Academics',
   'Communication',
   'Sports',
+  'Arts & Crafts',
+  'Dance',
+  'Health & Fitness',
   'Other',
 ] as const;
 export type SkillCategoryName = (typeof SKILL_CATEGORIES)[number];
@@ -92,6 +95,50 @@ export const NOTIFICATION_TYPES = [
   'MODERATION_NOTICE',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+/**
+ * What a student can switch on and off for push, and what Android shows as a channel in
+ * the phone's own settings. Account notices (suspensions, warnings, removed skills) have no
+ * switch: a student must not be able to miss being told about their own account.
+ *
+ * The app creates one Android channel per category with the same id, so these ids are
+ * permanent. A channel's sound and vibration cannot be changed after the phone has
+ * created it, so changing those means a new id.
+ */
+export const NOTIFICATION_CATEGORIES = [
+  'messages',
+  'requests',
+  'reminders',
+  'sessions',
+  'achievements',
+  'account',
+] as const;
+export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
+
+/** The categories a student can turn off. */
+export const OPTIONAL_NOTIFICATION_CATEGORIES = [
+  'messages',
+  'requests',
+  'reminders',
+  'sessions',
+  'achievements',
+] as const satisfies readonly NotificationCategory[];
+export type OptionalNotificationCategory = (typeof OPTIONAL_NOTIFICATION_CATEGORIES)[number];
+
+export const NOTIFICATION_CATEGORY: Record<NotificationType, NotificationCategory> = {
+  MESSAGE_RECEIVED: 'messages',
+  REQUEST_RECEIVED: 'requests',
+  REQUEST_ACCEPTED: 'requests',
+  REQUEST_REJECTED: 'requests',
+  NEW_MATCH: 'requests',
+  SESSION_REMINDER: 'reminders',
+  SESSION_SCHEDULED: 'sessions',
+  SESSION_CANCELLED: 'sessions',
+  SESSION_COMPLETED: 'sessions',
+  REVIEW_RECEIVED: 'achievements',
+  BADGE_EARNED: 'achievements',
+  MODERATION_NOTICE: 'account',
+};
 
 export const BADGES = [
   'TOP_MENTOR',

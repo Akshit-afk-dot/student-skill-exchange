@@ -22,10 +22,15 @@ export async function updateProfile(
 
   // Assign only the keys actually present, so an omitted field is left untouched
   // rather than being overwritten with undefined.
-  for (const [key, value] of Object.entries(input)) {
+  const { notificationPrefs, ...rest } = input;
+  for (const [key, value] of Object.entries(rest)) {
     if (value !== undefined) {
       (user as unknown as Record<string, unknown>)[key] = value;
     }
+  }
+  // Switches merge one by one, so turning one off never resets the others.
+  for (const [category, on] of Object.entries(notificationPrefs ?? {})) {
+    if (typeof on === 'boolean') user.set(`notificationPrefs.${category}`, on);
   }
   await user.save();
   return user;

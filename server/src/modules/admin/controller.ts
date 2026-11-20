@@ -49,6 +49,20 @@ const createSkillSchema = z.object({
 
 const mergeSkillsSchema = z.object({ sourceId: objectId, targetId: objectId });
 
+const listSkillsSchema = z.object({
+  status: z.enum(service.SKILL_REVIEW_STATUSES).default('all'),
+  q: z.string().trim().max(80).optional(),
+  category: objectId.optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+// The reason is optional, and so is the body that carries it.
+const rejectSkillSchema = z
+  .object({ reason: z.string().trim().min(1).max(300).optional() })
+  .optional()
+  .transform((body) => body ?? {});
+
 const hideReviewSchema = z.object({ hidden: z.boolean() });
 
 const pageSchema = z.object({
@@ -140,6 +154,31 @@ adminRouter.post(
       req.ip,
     );
     res.json({ data: review });
+  }),
+);
+
+/** GET /admin/skills — every skill, including those in review and removed ones. */
+adminRouter.get(
+  '/skills',
+  validate({ query: listSkillsSchema }),
+  asyncHandler(async (req, res) => {
+    const query = validatedQuery<z.infer<typeof listSkillsSchema>>(req);
+    res.json({ data: await service.listSkillsForReview(query) });
+  }),
+);
+
+/** POST /admin/skills/:id/reject — remove a student-added skill from everyone's lists. */
+adminRouter.post(
+  '/skills/:id/reject',
+  validate({ params: objectIdParam, body: rejectSkillSchema }),
+  asyncHandler(async (req, res) => {
+    const skill = await service.rejectSkill(
+      currentUserId(req),
+      req.params.id as string,
+      req.body.reason,
+      req.ip,
+    );
+    res.json({ data: skill });
   }),
 );
 

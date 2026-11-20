@@ -169,7 +169,7 @@ only applies in development — production builds use the configured URL verbati
 
 ## Optional integrations
 
-Cloudinary, Firebase push, Google sign-in and SMTP each have a step-by-step credential
+Cloudinary, push notifications, Google sign-in and SMTP each have a step-by-step credential
 walkthrough in **[INTEGRATIONS.md](INTEGRATIONS.md)** — where to click, what to copy, and
 how to verify it worked.
 
@@ -211,4 +211,3 @@ emits.
 | Background jobs run in-process | Duplicated across instances | `ENABLE_JOBS=false` on all but one, or an external scheduler |
 | Socket.IO is single-instance | Realtime breaks across instances | Redis adapter |
 | Local disk storage is not durable on ephemeral hosts | Uploads lost on redeploy | Configure Cloudinary |
-| `firebase-admin` pulls a transitive `uuid` advisory (moderate) | No practical exposure — the affected code path takes an explicit buffer we never pass | Resolves when firebase-admin updates its dependency |

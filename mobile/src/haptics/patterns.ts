@@ -192,6 +192,55 @@ export function messageReceived(): HapticPattern {
 }
 
 /**
+ * A notification banner arriving while the app is open, by kind.
+ *
+ * The banner drops in on the `spatial` spring and reaches its resting place about 160ms
+ * in, so each pattern lands its main beat there: a light texture as it starts moving, the
+ * message as it arrives. Each one echoes the phone's own vibration for the same kind of
+ * notification (the Android channel patterns in notifications/kinds.ts), so the app and
+ * the lock screen speak the same language. At the Subtle setting only the landing plays.
+ */
+export type ArrivalKind = 'messages' | 'requests' | 'reminders' | 'sessions' | 'achievements' | 'account';
+
+export const BANNER_LANDING_MS = 160;
+
+export function arrival(kind: ArrivalKind): HapticPattern {
+  const land = BANNER_LANDING_MS;
+  switch (kind) {
+    case 'messages':
+      // Two light knocks, as in an open chat.
+      return [
+        { at: 0, p: 'tick', detail: true },
+        { at: land, p: 'tap' },
+      ];
+    case 'requests':
+      // Knock, knock, and a firmer landing: someone is at the door.
+      return [
+        { at: 0, p: 'tick', detail: true },
+        { at: 80, p: 'tap', detail: true },
+        { at: land + 60, p: 'click' },
+      ];
+    case 'reminders':
+      // Three even beats, like a soft alarm.
+      return [
+        { at: 0, p: 'tap', detail: true },
+        { at: 140, p: 'tap', detail: true },
+        { at: 280, p: 'click' },
+      ];
+    case 'achievements':
+      return achievement();
+    case 'account':
+      return one('warn');
+    case 'sessions':
+    default:
+      return [
+        { at: 0, p: 'tick', detail: true },
+        { at: land, p: 'click' },
+      ];
+  }
+}
+
+/**
  * Holding a control that needs a deliberate long press. Ticks come faster and firmer as
  * the hold nears completion, then it commits with a thud. Stop the pattern if the finger
  * lifts early.

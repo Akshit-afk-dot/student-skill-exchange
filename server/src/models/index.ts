@@ -1,7 +1,7 @@
 export { User, hashPassword } from './User';
 export type { IUser, UserDoc, UserModel, AvailabilitySlot, UserStats } from './User';
-export { Skill, SkillCategory, skillSlug } from './Skill';
-export type { ISkill, SkillDoc, ISkillCategory } from './Skill';
+export { Skill, SkillCategory, SKILL_APPROVALS, skillMatchKey, skillSlug } from './Skill';
+export type { ISkill, SkillApproval, SkillDoc, ISkillCategory } from './Skill';
 export { UserSkill } from './UserSkill';
 export type { IUserSkill, UserSkillDoc } from './UserSkill';
 export { LearningRequest } from './LearningRequest';
